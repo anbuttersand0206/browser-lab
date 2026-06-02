@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useNavigate } from 'react-router-dom'
-import { Zap, Sun, Moon, ArrowLeft, ChevronRight, HelpCircle } from 'lucide-react'
+import { Zap, Sun, Moon, ArrowLeft, ChevronRight, HelpCircle, Plus, Check, X } from 'lucide-react'
 import { useWebContainer, type ContainerStatus } from '../../hooks/useWebContainer'
 import { useUnsavedGuard } from '../../hooks/useUnsavedGuard'
 import { useJsonIO } from '../../hooks/useJsonIO'
@@ -75,6 +75,19 @@ function restoreProgrammingProgress(): { scenario: ProgrammingScenario; files: R
     // JSON 破損時はデフォルトで起動する
     return { scenario: programmingScenarios[0], files: programmingScenarios[0].files }
   }
+}
+
+// ファイル名から言語バッジ文字列を返す。
+// サイドバーの狭いスペースで拡張子を視覚的に区別するための短縮表記。
+function getFileBadge(filename: string): string {
+  if (filename.endsWith('.json'))                    return '{}'
+  if (filename.endsWith('.sql'))                     return 'SQL'
+  if (filename.endsWith('.tsx'))                     return 'TSX'
+  if (filename.endsWith('.ts'))                      return 'TS'
+  if (filename.endsWith('.js') || filename.endsWith('.mjs')) return 'JS'
+  if (filename.endsWith('.html'))                    return 'HTML'
+  if (filename.endsWith('.css'))                     return 'CSS'
+  return '...'
 }
 
 // ContainerStatus をステータスバー表示用の文字列・色に変換する
@@ -283,6 +296,52 @@ export default function ProgrammingPage() {
 
   const [isHelpOpen, setIsHelpOpen] = useState(false)
 
+  // ファイル作成UI の表示フラグと入力中のファイル名
+  const [isAddingFile, setIsAddingFile] = useState(false)
+  const [newFileName, setNewFileName] = useState('')
+  // 新規ファイル入力欄への ref（表示時に自動フォーカスするために使う）
+  const newFileInputRef = useRef<HTMLInputElement>(null)
+
+  // isAddingFile が true になった瞬間に入力欄にフォーカスを移す
+  useEffect(() => {
+    if (isAddingFile) newFileInputRef.current?.focus()
+  }, [isAddingFile])
+
+  const handleAddFile = () => {
+    const trimmedName = newFileName.trim()
+    // ガード節: 空ファイル名、または同名ファイルが既に存在する場合は追加しない
+    if (!trimmedName || trimmedName in files) {
+      setIsAddingFile(false)
+      setNewFileName('')
+      return
+    }
+    setFiles((prev) => ({ ...prev, [trimmedName]: '' }))
+    setActiveFile(trimmedName)
+    setIsAddingFile(false)
+    setNewFileName('')
+  }
+
+  const handleDeleteFile = (filename: string) => {
+    // WebContainer はファイルなしで起動できないため、最後の 1 ファイルは削除不可にする
+    if (Object.keys(files).length <= 1) return
+    const nextFiles = Object.fromEntries(
+      Object.entries(files).filter(([name]) => name !== filename)
+    )
+    setFiles(nextFiles)
+    // 削除対象がアクティブファイルだった場合は先頭ファイルに切り替える
+    if (activeFile === filename) {
+      setActiveFile(Object.keys(nextFiles)[0])
+    }
+  }
+
+  const handleNewFileKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') handleAddFile()
+    if (e.key === 'Escape') {
+      setIsAddingFile(false)
+      setNewFileName('')
+    }
+  }
+
   // Ctrl+S / Cmd+S でエクスポートできるようにする。
   // ブラウザ標準の「ページを保存」ダイアログを preventDefault で抑制している。
   useEffect(() => {
@@ -331,12 +390,14 @@ export default function ProgrammingPage() {
         <button
           onClick={() => setIsHelpOpen(true)}
           title="キーボードショートカット一覧"
+          aria-label="キーボードショートカット一覧を表示"
           className="ml-2 rounded px-2 py-0.5 text-xs text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
         >
           <HelpCircle size={14} />
         </button>
         <button
           onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+          aria-label={resolvedTheme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
           className="rounded px-2 py-0.5 text-xs text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
         >
           {resolvedTheme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
@@ -371,24 +432,82 @@ export default function ProgrammingPage() {
           </div>
 
           <div className="border-t border-dark-border dark:border-dark-border light:border-light-border">
-            <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-              ファイル
-            </div>
-            {Object.keys(files).map((filename) => (
+            {/* ヘッダー行：「ファイル」ラベルと新規追加ボタン */}
+            <div className="flex items-center px-3 py-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
+                ファイル
+              </span>
               <button
-                key={filename}
-                onClick={() => setActiveFile(filename)}
-                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${
-                  activeFile === filename
-                    ? 'bg-dark-active text-dark-text dark:bg-dark-active dark:text-dark-text light:bg-light-active light:text-light-text'
-                    : 'text-dark-textDim hover:bg-dark-hover hover:text-dark-text dark:text-dark-textDim dark:hover:bg-dark-hover dark:hover:text-dark-text light:text-light-textDim light:hover:bg-light-hover light:hover:text-light-text'
-                }`}
+                type="button"
+                onClick={() => setIsAddingFile(true)}
+                aria-label="新しいファイルを追加"
+                title="新しいファイルを追加"
+                className="ml-auto rounded p-0.5 text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
               >
-                <span className="font-mono text-dark-textDim">
-                  {filename.endsWith('.json') ? '{}' : filename.endsWith('.sql') ? 'SQL' : 'TS'}
-                </span>
-                {filename}
+                <Plus size={12} />
               </button>
+            </div>
+
+            {/* 新規ファイル名入力欄（isAddingFile の間だけ表示） */}
+            {isAddingFile && (
+              <div className="flex items-center gap-1 px-2 pb-1">
+                <input
+                  ref={newFileInputRef}
+                  type="text"
+                  value={newFileName}
+                  onChange={(e) => setNewFileName(e.target.value)}
+                  onKeyDown={handleNewFileKeyDown}
+                  placeholder="filename.ts"
+                  aria-label="新しいファイル名"
+                  className="flex-1 rounded border border-dark-border bg-dark-bg px-2 py-0.5 font-mono text-xs text-dark-text focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-dark-border dark:bg-dark-bg dark:text-dark-text light:border-light-border light:bg-white light:text-light-text"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddFile}
+                  aria-label="ファイルを作成"
+                  className="rounded p-0.5 text-green-400 transition-colors hover:text-green-300"
+                >
+                  <Check size={12} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setIsAddingFile(false); setNewFileName('') }}
+                  aria-label="キャンセル"
+                  className="rounded p-0.5 text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            )}
+
+            {/* ファイル一覧：ホバーで削除ボタンを表示する */}
+            {Object.keys(files).map((filename) => (
+              <div key={filename} className="group flex items-center">
+                <button
+                  onClick={() => setActiveFile(filename)}
+                  className={`flex flex-1 items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${
+                    activeFile === filename
+                      ? 'bg-dark-active text-dark-text dark:bg-dark-active dark:text-dark-text light:bg-light-active light:text-light-text'
+                      : 'text-dark-textDim hover:bg-dark-hover hover:text-dark-text dark:text-dark-textDim dark:hover:bg-dark-hover dark:hover:text-dark-text light:text-light-textDim light:hover:bg-light-hover light:hover:text-light-text'
+                  }`}
+                >
+                  <span className="font-mono text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
+                    {getFileBadge(filename)}
+                  </span>
+                  {filename}
+                </button>
+                {/* 最後の1ファイルは削除不可のためボタンを出さない */}
+                {Object.keys(files).length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteFile(filename)}
+                    aria-label={`${filename} を削除`}
+                    className="mr-1 rounded p-0.5 text-dark-textDim opacity-0 transition-all hover:text-red-400 group-hover:opacity-100 dark:text-dark-textDim dark:hover:text-red-400 light:text-light-textDim light:hover:text-red-500"
+                  >
+                    <X size={10} />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         </div>

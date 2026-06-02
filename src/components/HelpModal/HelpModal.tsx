@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { X } from 'lucide-react'
 
 export interface ShortcutEntry {
@@ -40,6 +41,17 @@ export const DB_SHORTCUTS: ShortcutGroup = {
 }
 
 export function HelpModal({ isOpen, onClose, groups }: HelpModalProps) {
+  // ESC キーでモーダルを閉じる。
+  // ブラウザ標準のダイアログ（<dialog> 要素）と同等の操作感を提供するため。
+  useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onClose])
+
   if (!isOpen) return null
 
   // Mac 判定: navigator.platform は非推奨だが GitHub Pages 環境では互換性が高いため使用する。
@@ -47,23 +59,32 @@ export function HelpModal({ isOpen, onClose, groups }: HelpModalProps) {
   const isMac = navigator.platform.toUpperCase().includes('MAC')
 
   return (
+    // role="dialog" と aria-modal で支援技術にモーダルの開閉を正確に伝える
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="help-modal-title"
     >
-      {/* クリックがオーバーレイに伝播しないようにする */}
+      {/* 背景オーバーレイ：クリックで閉じる。aria-hidden でスクリーンリーダーから隠す */}
       <div
-        className="w-full max-w-md rounded-lg border border-dark-border bg-dark-sidebar p-6 shadow-2xl dark:border-dark-border dark:bg-dark-sidebar light:border-light-border light:bg-light-sidebar"
-        onClick={(e) => e.stopPropagation()}
-      >
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      <div className="relative w-full max-w-md rounded-lg border border-dark-border bg-dark-sidebar p-6 shadow-2xl dark:border-dark-border dark:bg-dark-sidebar light:border-light-border light:bg-light-sidebar">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-dark-text dark:text-dark-text light:text-light-text">
+          <h2
+            id="help-modal-title"
+            className="text-sm font-semibold text-dark-text dark:text-dark-text light:text-light-text"
+          >
             キーボードショートカット
           </h2>
           <button
             onClick={onClose}
+            aria-label="ショートカット一覧を閉じる"
             className="rounded p-1 text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
-            aria-label="閉じる"
           >
             <X size={16} />
           </button>

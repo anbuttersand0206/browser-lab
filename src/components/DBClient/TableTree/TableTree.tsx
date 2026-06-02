@@ -51,9 +51,13 @@ export function TableTree({ tables, onTableClick }: TableTreeProps) {
           const isExpanded = expandedTableNames.has(table.name)
           return (
             <div key={table.name}>
-              <div
+              {/* div ではなく button にすることでキーボード操作・スクリーンリーダー対応を確保する */}
+              <button
+                type="button"
                 title={buildTableTitle(table.columns)}
-                className="flex cursor-pointer items-center gap-1.5 px-3 py-1 text-xs transition-colors hover:bg-dark-hover dark:hover:bg-dark-hover light:hover:bg-light-hover"
+                aria-expanded={isExpanded}
+                aria-label={`${table.name}テーブル（${table.columns.length}カラム）`}
+                className="flex w-full items-center gap-1.5 px-3 py-1 text-xs transition-colors hover:bg-dark-hover dark:hover:bg-dark-hover light:hover:bg-light-hover"
                 onClick={() => {
                   toggleTable(table.name)
                   onTableClick?.(table.name)
@@ -70,7 +74,7 @@ export function TableTree({ tables, onTableClick }: TableTreeProps) {
                 <span className="ml-auto text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
                   {table.columns.length}
                 </span>
-              </div>
+              </button>
               {isExpanded && (
                 <div className="ml-6 border-l border-dark-border pl-2 dark:border-dark-border light:border-light-border">
                   {table.columns.map((col) => (

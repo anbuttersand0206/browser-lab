@@ -44,10 +44,17 @@ export function ScenarioPanel({ title, description, hints, solution }: ScenarioP
 
   return (
     <div className="flex h-full flex-col bg-dark-sidebar dark:bg-dark-sidebar light:bg-light-sidebar">
-      <div className="flex flex-shrink-0 border-b border-dark-border dark:border-dark-border light:border-light-border">
+      {/* role="tablist" でタブグループをスクリーンリーダーに伝える */}
+      <div
+        role="tablist"
+        aria-label="シナリオパネル"
+        className="flex flex-shrink-0 border-b border-dark-border dark:border-dark-border light:border-light-border"
+      >
         {PANEL_TABS.map((tab) => (
           <button
             key={tab.id}
+            role="tab"
+            aria-selected={activeTab === tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 text-xs font-medium transition-colors ${
               activeTab === tab.id

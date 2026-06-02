@@ -349,12 +349,14 @@ export default function DatabasePage() {
         <button
           onClick={() => setIsHelpOpen(true)}
           title="キーボードショートカット一覧"
+          aria-label="キーボードショートカット一覧を表示"
           className="ml-2 rounded px-2 py-0.5 text-xs text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
         >
           <HelpCircle size={14} />
         </button>
         <button
           onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+          aria-label={resolvedTheme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
           className="rounded px-2 py-0.5 text-xs text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
         >
           {resolvedTheme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
