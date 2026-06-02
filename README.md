@@ -110,7 +110,7 @@ Chrome / Edge のアドレスバー右端に表示される「インストール
 GitHub Pages で動作するフロントエンド完結の範囲で検討中の改善・追加機能です。
 
 ### プログラミング学習コース
-- [ ] **型補完の強化** — WebContainer 内の `node_modules` から型定義を読み込み、CodeMirror で高度な補完を実現する
+- [x] **型補完の強化** — `autocompletion()` 有効化・TypeScript組み込み型/ユーティリティ型・グローバル API・スニペット・package.json 依存パッケージ固有補完（express/kysely）・SQL テーブル/カラム補完（Compartment で動的更新）
 
 ### DB 学習コース
 - [ ] **スキーマ可視化** — PGLite のシステムカタログから現在のテーブル構造を解析し、ER 図を自動生成する

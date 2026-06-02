@@ -1,12 +1,14 @@
 import { useEffect, useRef } from 'react'
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view'
-import { EditorState } from '@codemirror/state'
-import { javascript } from '@codemirror/lang-javascript'
-import { sql } from '@codemirror/lang-sql'
+import { EditorState, Compartment, type Extension } from '@codemirror/state'
+import { javascript, localCompletionSource, typescriptSnippets } from '@codemirror/lang-javascript'
+import { sql, PostgreSQL } from '@codemirror/lang-sql'
+import { autocompletion, completionKeymap, completeFromList, type Completion } from '@codemirror/autocomplete'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { bracketMatching, foldGutter, indentOnInput, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { useTheme } from '../../hooks/useTheme'
+import { TS_GLOBAL_COMPLETIONS } from '../../lib/tsCompletions'
 
 // ライトテーマ定義
 const lightTheme = EditorView.theme({
@@ -18,40 +20,78 @@ const lightTheme = EditorView.theme({
   '.cm-activeLine': { backgroundColor: '#f0f0f0' },
   '.cm-gutters': { backgroundColor: '#f5f5f5', color: '#999', borderRight: '1px solid #e4e4e4' },
   '.cm-activeLineGutter': { backgroundColor: '#e8e8e8' },
+  // 補完ドロップダウンのライトテーマ
+  '.cm-tooltip.cm-tooltip-autocomplete': { backgroundColor: '#f8f8f8', border: '1px solid #ddd' },
+  '.cm-completionLabel': { color: '#1e1e1e' },
+  '.cm-completionDetail': { color: '#795e26' },
 })
+
+// SQL モード用スキーマ。テーブル名とカラム名を補完候補に使う。
+// TableInfo を直接参照せずシンプルな形にすることで usePGLite への依存を切る。
+export interface SqlTableSchema {
+  name: string
+  columns: string[]
+}
+
+// TableInfo[] を @codemirror/lang-sql の schema 形式に変換する
+function buildSqlSchema(tables: SqlTableSchema[]): Record<string, string[]> {
+  return Object.fromEntries(tables.map((t) => [t.name, t.columns]))
+}
 
 interface CodeEditorProps {
   value: string
   onChange: (value: string) => void
   language: 'typescript' | 'sql'
   onCtrlEnter?: () => void
+  // TypeScript モード用: package.json を解析して得たパッケージ固有の補完候補。
+  // シナリオ切り替え時に更新され、インストール済みパッケージ（express 等）の API を補完する。
+  extraTsCompletions?: Completion[]
+  // SQL モード用: 現在 PGLite に存在するテーブルとカラム名。
+  // Compartment で動的に更新するため、テーブルを CREATE するたびに補完候補が増える。
+  sqlTables?: SqlTableSchema[]
 }
 
-export function CodeEditor({ value, onChange, language, onCtrlEnter }: CodeEditorProps) {
+export function CodeEditor({
+  value,
+  onChange,
+  language,
+  onCtrlEnter,
+  extraTsCompletions,
+  sqlTables,
+}: CodeEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const { resolvedTheme } = useTheme()
 
+  // 最新の prop 値を ref に保持し、effect 内で stale closure を防ぐ。
+  // これらは effect の依存配列に含めず、常に最新値を読み取るために使う。
+  const extraTsCompletionsRef = useRef<Completion[]>(extraTsCompletions ?? [])
+  extraTsCompletionsRef.current = extraTsCompletions ?? []
+
+  const sqlTablesRef = useRef<SqlTableSchema[]>(sqlTables ?? [])
+  sqlTablesRef.current = sqlTables ?? []
+
+  // SQL スキーマを動的に差し替えるための Compartment。
+  // テーブルが CREATE されるたびに再生成するのではなく、
+  // この Compartment だけを reconfigure することでエディタ状態を保持したまま更新できる。
+  const sqlSchemaCompartmentRef = useRef<Compartment | null>(null)
+
   // language または theme が変わるたびに EditorView を再生成する。
-  // value は別の effect で同期するため、ここでは依存配列に含めない。
+  // value・extraTsCompletions・sqlTables は別 effect または ref で管理するためここに含めない。
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!containerRef.current) return
 
     const ctrlEnterKeymap = onCtrlEnter
-      ? [keymap.of([
-          {
-            key: 'Ctrl-Enter',
-            mac: 'Cmd-Enter',
-            run: () => {
-              onCtrlEnter()
-              return true
-            },
-          },
-        ])]
+      ? [keymap.of([{
+          key: 'Ctrl-Enter',
+          mac: 'Cmd-Enter',
+          run: () => { onCtrlEnter(); return true },
+        }])]
       : []
 
-    const extensions = [
+    // 共通 extension（言語によらず使う）
+    const commonExtensions = [
       lineNumbers(),
       highlightActiveLine(),
       highlightActiveLineGutter(),
@@ -59,36 +99,63 @@ export function CodeEditor({ value, onChange, language, onCtrlEnter }: CodeEdito
       foldGutter(),
       indentOnInput(),
       bracketMatching(),
-      keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
+      // completionKeymap は defaultKeymap より前に置き、補完表示中の Tab/Enter を優先させる
+      keymap.of([...completionKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab]),
       ...ctrlEnterKeymap,
-      language === 'typescript'
-        ? javascript({ typescript: true })
-        : sql(),
       ...(resolvedTheme === 'dark'
         ? [oneDark]
         : [lightTheme, syntaxHighlighting(defaultHighlightStyle)]),
       EditorView.updateListener.of((update) => {
-        if (update.docChanged) {
-          onChange(update.state.doc.toString())
-        }
+        if (update.docChanged) onChange(update.state.doc.toString())
       }),
     ]
 
+    let langExtensions: Extension[] = []
+
+    if (language === 'typescript') {
+      // autocompletion の override で補完ソースをまとめて指定する。
+      // - localCompletionSource: 現在のドキュメント内の変数・関数名
+      // - completeFromList: TypeScript グローバル + パッケージ固有 + snippets
+      // override を使うことで補完ソースの優先順を明示的に制御できる。
+      const tsCompletion = autocompletion({
+        maxRenderedOptions: 12,
+        override: [
+          localCompletionSource,
+          completeFromList([
+            ...TS_GLOBAL_COMPLETIONS,
+            ...extraTsCompletionsRef.current,
+            ...typescriptSnippets,
+          ]),
+        ],
+      })
+      langExtensions = [javascript({ typescript: true }), tsCompletion]
+    } else {
+      // SQL モード: PostgreSQL 方言でキーワード補完を有効化する。
+      // テーブル・カラム補完は Compartment 経由で動的に更新する。
+      const sqlSchemaCompartment = new Compartment()
+      sqlSchemaCompartmentRef.current = sqlSchemaCompartment
+
+      const initialSchema = buildSqlSchema(sqlTablesRef.current)
+      langExtensions = [
+        autocompletion({ maxRenderedOptions: 12 }),
+        sqlSchemaCompartment.of(
+          sql({ dialect: PostgreSQL, schema: initialSchema })
+        ),
+      ]
+    }
+
     const state = EditorState.create({
       doc: value,
-      extensions,
+      extensions: [...commonExtensions, ...langExtensions],
     })
 
-    const view = new EditorView({
-      state,
-      parent: containerRef.current,
-    })
-
+    const view = new EditorView({ state, parent: containerRef.current })
     viewRef.current = view
 
     return () => {
       view.destroy()
       viewRef.current = null
+      sqlSchemaCompartmentRef.current = null
     }
   }, [language, resolvedTheme])
 
@@ -104,6 +171,22 @@ export function CodeEditor({ value, onChange, language, onCtrlEnter }: CodeEdito
       })
     }
   }, [value])
+
+  // SQL テーブルが増減したときに補完スキーマを動的に更新する。
+  // Compartment を使うことでエディタを再生成せずスキーマだけを差し替えられる。
+  // これによりカーソル位置・undo 履歴・フォーカスを保持したままテーブル補完を更新できる。
+  useEffect(() => {
+    const view = viewRef.current
+    const compartment = sqlSchemaCompartmentRef.current
+    if (!view || !compartment || language !== 'sql') return
+
+    const newSchema = buildSqlSchema(sqlTables ?? [])
+    view.dispatch({
+      effects: compartment.reconfigure(
+        sql({ dialect: PostgreSQL, schema: newSchema })
+      ),
+    })
+  }, [sqlTables, language])
 
   return <div ref={containerRef} className="h-full w-full overflow-hidden" />
 }

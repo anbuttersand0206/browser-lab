@@ -450,6 +450,7 @@ export default function DatabasePage() {
                 onChange={setSql}
                 language="sql"
                 onCtrlEnter={executeSql}
+                sqlTables={tables.map((t) => ({ name: t.name, columns: t.columns.map((c) => c.name) }))}
               />
             )}
           </div>

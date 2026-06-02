@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useNavigate } from 'react-router-dom'
 import { Zap, Sun, Moon, ArrowLeft, ChevronRight, HelpCircle, Plus, Check, X } from 'lucide-react'
@@ -15,6 +15,7 @@ import { Toolbar } from '../../components/Toolbar/Toolbar'
 import { HelpModal, EDITOR_COMMON_SHORTCUTS } from '../../components/HelpModal/HelpModal'
 import { programmingScenarios, type ProgrammingScenario } from '../../scenarios/programming'
 import { validateProgrammingExport, extractDatabaseSnapshot } from '../../lib/importValidator'
+import { getPackageCompletions } from '../../lib/tsCompletions'
 
 // リサイズ可能な3ペインのサイズをまとめて管理する
 interface PaneSizes {
@@ -355,6 +356,15 @@ export default function ProgrammingPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleExport])
 
+  // package.json の dependencies を解析してパッケージ固有の補完候補を生成する。
+  // package.json の内容が変わったときだけ再計算し、キーストロークのたびに実行しないよう
+  // pkgJsonContent を個別に記憶してから useMemo の依存にしている。
+  const pkgJsonContent = files['package.json'] ?? ''
+  const extraTsCompletions = useMemo(
+    () => getPackageCompletions(pkgJsonContent),
+    [pkgJsonContent]
+  )
+
   const isBooting = status === 'booting'
   const isRunning = status === 'running'
 
@@ -539,6 +549,7 @@ export default function ProgrammingPage() {
                 value={files[activeFile] ?? ''}
                 onChange={updateActiveFile}
                 language="typescript"
+                extraTsCompletions={extraTsCompletions}
               />
             )}
           </div>
