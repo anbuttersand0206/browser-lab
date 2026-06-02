@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Copy, Check } from 'lucide-react'
+import { Copy, Check, Download } from 'lucide-react'
 import type { QueryResult } from '../../../hooks/usePGLite'
 import { ExplainView, isExplainResult } from '../ExplainView/ExplainView'
 
@@ -23,6 +23,47 @@ function buildTsv(result: QueryResult): string {
   return [headerRow, ...dataRows].join('\n')
 }
 
+// カンマや引用符・改行を含むフィールドを RFC 4180 に従ってエスケープする。
+// Excel・Google Sheets いずれも RFC 4180 に準拠した CSV を正しく解釈できる。
+function escapeCsvField(value: string): string {
+  const needsQuotes = value.includes(',') || value.includes('"') || value.includes('\n') || value.includes('\r')
+  if (!needsQuotes) return value
+  return `"${value.replace(/"/g, '""')}"`
+}
+
+function buildCsv(result: QueryResult): string {
+  const headerRow = result.fields.map(f => escapeCsvField(f.name)).join(',')
+  const dataRows = result.rows.map(row =>
+    result.fields.map(f => {
+      const cellValue = row[f.name]
+      return cellValue === null ? '' : escapeCsvField(String(cellValue))
+    }).join(',')
+  )
+  return [headerRow, ...dataRows].join('\n')
+}
+
+function buildJson(result: QueryResult): string {
+  const objects = result.rows.map(row =>
+    Object.fromEntries(result.fields.map(f => [f.name, row[f.name]]))
+  )
+  return JSON.stringify(objects, null, 2)
+}
+
+// Blob を生成してブラウザにダウンロードさせる。
+// <a> タグを一時的に作って click() する方法は、ファイル保存ダイアログを経由せずに
+// 直接ダウンロードできる唯一の方法（フロントエンド完結）。
+function downloadText(content: string, filename: string, mimeType: string): void {
+  const blob = new Blob([content], { type: mimeType })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  // revokeObjectURL はイベントループの次のターンで呼ぶ。
+  // click() の直後に解放すると一部ブラウザでダウンロードが始まらない場合がある。
+  setTimeout(() => URL.revokeObjectURL(url), 100)
+}
+
 export function ResultGrid({ results }: ResultGridProps) {
   const [copyState, setCopyState] = useState<CopyState>('idle')
 
@@ -38,18 +79,24 @@ export function ResultGrid({ results }: ResultGridProps) {
 
   const handleCopyResult = async () => {
     // エラー時はエラーメッセージを、正常時は TSV をコピーする
-    const textToCopy = latest.error
-      ? latest.error
-      : buildTsv(latest)
-
+    const textToCopy = latest.error ? latest.error : buildTsv(latest)
     await navigator.clipboard.writeText(textToCopy)
-
     setCopyState('copied')
     // 1.5 秒後に元のアイコンに戻す（ユーザーへのフィードバック表示期間）
     setTimeout(() => setCopyState('idle'), 1500)
   }
 
+  const handleDownloadCsv = () => {
+    downloadText(buildCsv(latest), 'result.csv', 'text/csv;charset=utf-8;')
+  }
+
+  const handleDownloadJson = () => {
+    downloadText(buildJson(latest), 'result.json', 'application/json')
+  }
+
   const isCopied = copyState === 'copied'
+  // ダウンロードボタンはデータがある場合のみ表示する
+  const hasData = !latest.error && latest.fields.length > 0 && !isExplainResult(latest)
 
   return (
     <div className="flex h-full flex-col">
@@ -74,20 +121,43 @@ export function ResultGrid({ results }: ResultGridProps) {
           </span>
         </div>
 
-        <button
-          onClick={handleCopyResult}
-          title={isCopied ? 'コピーしました' : '結果をクリップボードにコピー（TSV形式）'}
-          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-colors text-dark-textDim hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
-        >
-          {isCopied ? (
-            <Check size={12} className="text-green-400" />
-          ) : (
-            <Copy size={12} />
+        <div className="flex items-center gap-1">
+          {hasData && (
+            <>
+              <button
+                onClick={handleDownloadCsv}
+                title="CSV としてダウンロード"
+                className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-colors text-dark-textDim hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
+              >
+                <Download size={12} />
+                CSV
+              </button>
+              <button
+                onClick={handleDownloadJson}
+                title="JSON としてダウンロード"
+                className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-colors text-dark-textDim hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
+              >
+                <Download size={12} />
+                JSON
+              </button>
+            </>
           )}
-          <span className={isCopied ? 'text-green-400' : ''}>
-            {isCopied ? 'コピー済み' : 'コピー'}
-          </span>
-        </button>
+
+          <button
+            onClick={handleCopyResult}
+            title={isCopied ? 'コピーしました' : '結果をクリップボードにコピー（TSV形式）'}
+            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-colors text-dark-textDim hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
+          >
+            {isCopied ? (
+              <Check size={12} className="text-green-400" />
+            ) : (
+              <Copy size={12} />
+            )}
+            <span className={isCopied ? 'text-green-400' : ''}>
+              {isCopied ? 'コピー済み' : 'コピー'}
+            </span>
+          </button>
+        </div>
       </div>
 
       {latest.error && (
@@ -103,7 +173,7 @@ export function ResultGrid({ results }: ResultGridProps) {
         </div>
       )}
 
-      {!latest.error && latest.fields.length > 0 && !isExplainResult(latest) && (
+      {hasData && (
         <div className="flex-1 overflow-auto">
           <table className="w-full border-collapse text-xs">
             <thead className="sticky top-0 bg-dark-sidebar dark:bg-dark-sidebar light:bg-light-sidebar">

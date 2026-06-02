@@ -468,9 +468,128 @@ SELECT * FROM accounts;
 `,
 }
 
+const scenario5: DatabaseScenario = {
+  id: 'window-functions',
+  title: 'ウィンドウ関数を使いこなす',
+  description: `## ウィンドウ関数を使いこなす
+
+\`OVER\` 句を使ったウィンドウ関数は、グループ集計では消えてしまう行の詳細を保ちながら、
+順位・累計・前後の値などを計算できる強力な機能です。
+
+### 課題
+
+売上データを使って、以下を実装してください：
+
+1. **ROW_NUMBER**: 全体の売上を高い順に並べ、通し番号を付ける
+2. **RANK / DENSE_RANK**: カテゴリ内での売上ランキング（同率の扱いを比較する）
+3. **SUM OVER**: 月ごとの売上に加え、累計売上を同時に表示する
+4. **LAG / LEAD**: 前月・翌月の売上を隣に並べて前後比較できるようにする
+5. **PARTITION BY**: カテゴリごとに独立したランキングを付ける
+
+### ポイント
+
+- \`OVER()\` だけで全行を対象にしたウィンドウになる
+- \`PARTITION BY\` でグループを分けても行は消えない（GROUP BY との違い）
+- \`ORDER BY\` を \`OVER\` の中に書くと順位・累計の計算基準になる
+- \`ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW\` で累計を計算する
+`,
+  initialSQL: `-- テーブル作成とデータ挿入
+CREATE TABLE sales (
+  id         SERIAL PRIMARY KEY,
+  month      DATE NOT NULL,
+  category   TEXT NOT NULL,
+  amount     NUMERIC(12,2) NOT NULL
+);
+
+INSERT INTO sales (month, category, amount) VALUES
+  ('2024-01-01', 'electronics', 120000),
+  ('2024-01-01', 'furniture',    45000),
+  ('2024-01-01', 'books',         8000),
+  ('2024-02-01', 'electronics',  98000),
+  ('2024-02-01', 'furniture',    62000),
+  ('2024-02-01', 'books',        11000),
+  ('2024-03-01', 'electronics', 145000),
+  ('2024-03-01', 'furniture',    38000),
+  ('2024-03-01', 'books',         9500);
+
+-- TODO: 1. 全体の売上を高い順に並べて ROW_NUMBER で通し番号を付ける
+
+
+-- TODO: 2. カテゴリ内で RANK と DENSE_RANK を比較する（同率が発生するようにデータを工夫して）
+
+
+-- TODO: 3. 月ごとの売上と、その時点までの累計売上を SUM OVER で表示する
+
+
+-- TODO: 4. 月・カテゴリごとに前月の売上を LAG で隣に並べる
+
+
+-- TODO: 5. PARTITION BY category で、カテゴリ内ランキングを付ける
+`,
+  hints: [
+    '`ROW_NUMBER() OVER (ORDER BY amount DESC)` で売上の高い順に番号が振られます',
+    '`RANK` は同率に同じ番号を振り次を飛ばします（1,1,3）。`DENSE_RANK` は飛ばしません（1,1,2）',
+    '累計は `SUM(amount) OVER (ORDER BY month ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)` で計算できます',
+    '`LAG(amount, 1) OVER (PARTITION BY category ORDER BY month)` で前の行の値を取得できます',
+    '`PARTITION BY category ORDER BY amount DESC` とすると、カテゴリごとに独立したランキングになります',
+  ],
+  solution: `-- テーブル作成（省略）
+
+-- 1. ROW_NUMBER：全体の通し番号
+SELECT
+  ROW_NUMBER() OVER (ORDER BY amount DESC) AS row_num,
+  month,
+  category,
+  amount
+FROM sales
+ORDER BY amount DESC;
+
+-- 2. RANK vs DENSE_RANK の比較
+SELECT
+  category,
+  amount,
+  RANK()       OVER (ORDER BY amount DESC) AS rank,
+  DENSE_RANK() OVER (ORDER BY amount DESC) AS dense_rank
+FROM sales
+ORDER BY amount DESC;
+
+-- 3. 月ごとの売上と累計（全カテゴリ合算）
+SELECT
+  month,
+  SUM(amount) AS monthly_total,
+  SUM(SUM(amount)) OVER (
+    ORDER BY month
+    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+  ) AS cumulative_total
+FROM sales
+GROUP BY month
+ORDER BY month;
+
+-- 4. 前月との比較（LAG）
+SELECT
+  month,
+  category,
+  amount,
+  LAG(amount, 1) OVER (PARTITION BY category ORDER BY month) AS prev_month_amount,
+  amount - COALESCE(LAG(amount, 1) OVER (PARTITION BY category ORDER BY month), 0) AS diff
+FROM sales
+ORDER BY category, month;
+
+-- 5. カテゴリ内ランキング
+SELECT
+  category,
+  month,
+  amount,
+  RANK() OVER (PARTITION BY category ORDER BY amount DESC) AS rank_in_category
+FROM sales
+ORDER BY category, rank_in_category;
+`,
+}
+
 export const databaseScenarios: DatabaseScenario[] = [
   scenario1,
   scenario2,
   scenario3,
   scenario4,
+  scenario5,
 ]

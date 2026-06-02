@@ -23,11 +23,12 @@ interface HelpModalProps {
 export const EDITOR_COMMON_SHORTCUTS: ShortcutGroup = {
   label: 'エディタ共通',
   shortcuts: [
-    { description: '元に戻す',         mac: 'Cmd + Z',         other: 'Ctrl + Z' },
-    { description: 'やり直す',         mac: 'Cmd + Shift + Z', other: 'Ctrl + Y' },
+    { description: 'JSONで保存',        mac: 'Cmd + S',         other: 'Ctrl + S' },
+    { description: '元に戻す',          mac: 'Cmd + Z',         other: 'Ctrl + Z' },
+    { description: 'やり直す',          mac: 'Cmd + Shift + Z', other: 'Ctrl + Y' },
     { description: '選択行をインデント', mac: 'Tab',             other: 'Tab' },
     { description: 'インデント解除',    mac: 'Shift + Tab',     other: 'Shift + Tab' },
-    { description: '全選択',           mac: 'Cmd + A',         other: 'Ctrl + A' },
+    { description: '全選択',            mac: 'Cmd + A',         other: 'Ctrl + A' },
   ],
 }
 

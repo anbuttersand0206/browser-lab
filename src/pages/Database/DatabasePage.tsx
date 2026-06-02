@@ -9,6 +9,7 @@ import { useTheme } from '../../hooks/useTheme'
 import { CodeEditor } from '../../components/Editor/CodeEditor'
 import { ResultGrid } from '../../components/DBClient/ResultGrid/ResultGrid'
 import { TableTree } from '../../components/DBClient/TableTree/TableTree'
+import { QueryHistory } from '../../components/DBClient/QueryHistory/QueryHistory'
 import { ScenarioPanel } from '../../components/ScenarioPanel/ScenarioPanel'
 import { UnsavedModal } from '../../components/UnsavedModal/UnsavedModal'
 import { ResourceConsentModal, type ResourceSpec } from '../../components/ResourceConsentModal/ResourceConsentModal'
@@ -284,6 +285,19 @@ export default function DatabasePage() {
     localStorage.setItem(LS_KEY, JSON.stringify(progress))
   }, [debouncedScenarioId, debouncedSql])
 
+  // Ctrl+S / Cmd+S でエクスポートできるようにする。
+  // ブラウザ標準の「ページを保存」ダイアログを preventDefault で抑制している。
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isSaveShortcut = (e.ctrlKey || e.metaKey) && e.key === 's'
+      if (!isSaveShortcut) return
+      e.preventDefault()
+      handleExport()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleExport])
+
   // ステータスバー表示値を説明変数として先に計算し、JSX 内の条件式を減らす
   // 同意前は「起動待機中」を表示し、意図せず起動していないことをユーザーに示す
   const dbStatusTextColor =
@@ -374,6 +388,8 @@ export default function DatabasePage() {
 
           <div className="flex-1 overflow-auto">
             <TableTree tables={tables} onTableClick={handleTableClick} />
+            {/* 実行済みクエリを履歴として表示し、クリックでエディタに再読み込みできる */}
+            <QueryHistory queries={queryHistory} onSelect={setSql} />
           </div>
         </div>
 

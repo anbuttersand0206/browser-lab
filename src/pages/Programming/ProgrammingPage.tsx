@@ -283,6 +283,19 @@ export default function ProgrammingPage() {
 
   const [isHelpOpen, setIsHelpOpen] = useState(false)
 
+  // Ctrl+S / Cmd+S でエクスポートできるようにする。
+  // ブラウザ標準の「ページを保存」ダイアログを preventDefault で抑制している。
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isSaveShortcut = (e.ctrlKey || e.metaKey) && e.key === 's'
+      if (!isSaveShortcut) return
+      e.preventDefault()
+      handleExport()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleExport])
+
   const isBooting = status === 'booting'
   const isRunning = status === 'running'
 

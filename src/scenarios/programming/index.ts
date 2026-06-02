@@ -814,9 +814,194 @@ Object.entries(summary).forEach(([cat, { count, total }]) =>
   },
 }
 
+const scenario5: ProgrammingScenario = {
+  id: 'classes',
+  title: 'クラスと継承を理解する',
+  description: `## クラスと継承を理解する
+
+TypeScript のクラス構文・継承・アクセス修飾子を学びましょう。
+関数だけで書けることも多いですが、状態と振る舞いをまとめて管理したい場合にクラスは有効です。
+
+### 課題
+
+図形（Shape）の抽象クラスを基底に、具体的な図形クラスを実装してください：
+
+1. \`Shape\` 抽象クラスを定義する（\`area()\` と \`perimeter()\` を抽象メソッドにする）
+2. \`Circle\`（円）クラスを実装する
+3. \`Rectangle\`（長方形）クラスを実装する
+4. \`Triangle\`（三角形）クラスを実装する（3辺から面積を求める）
+5. \`printShapeInfo\` 関数で多態性（ポリモーフィズム）を確認する
+
+### ポイント
+
+- \`abstract class\` は直接インスタンス化できない基底クラスを定義する
+- \`extends\` でクラスを継承し、\`super()\` で親クラスのコンストラクタを呼ぶ
+- \`abstract\` メソッドはサブクラスで必ず実装しなければならない
+- \`private\` / \`protected\` / \`public\` でアクセス範囲を制限する
+- \`instanceof\` で実行時に型を判定できる
+`,
+  files: {
+    'index.ts': `// クラス・継承・抽象クラス
+
+// TODO: Shape 抽象クラスを定義してください
+// - コンストラクタで name (string) を受け取る
+// - area(): number を抽象メソッドにする
+// - perimeter(): number を抽象メソッドにする
+// - describe(): string を実装済みメソッドにする
+//   例: "Circle: area=78.54, perimeter=31.42"
+
+
+// TODO: Circle クラスを Shape から継承して実装してください
+// - コンストラクタで radius (number) を受け取る
+// - area = π × r²
+// - perimeter = 2 × π × r
+
+
+// TODO: Rectangle クラスを Shape から継承して実装してください
+// - コンストラクタで width (number) と height (number) を受け取る
+// - area = width × height
+// - perimeter = 2 × (width + height)
+
+
+// TODO: Triangle クラスを Shape から継承して実装してください
+// - コンストラクタで a, b, c (3辺の長さ) を受け取る
+// - area はヘロンの公式で計算する
+//   s = (a + b + c) / 2
+//   area = √(s × (s-a) × (s-b) × (s-c))
+// - perimeter = a + b + c
+
+
+// TODO: 図形情報を出力する関数を実装してください
+// Shape 型の配列を受け取り、各図形の describe() を出力する
+function printShapeInfo(shapes: Shape[]): void {
+  // ヒント: forEach または for...of で回せます
+}
+
+
+// --- 動作確認 ---
+const shapes: Shape[] = [
+  new Circle(5),
+  new Rectangle(4, 6),
+  new Triangle(3, 4, 5),
+]
+
+printShapeInfo(shapes)
+
+console.log('\\n=== instanceof チェック ===')
+for (const shape of shapes) {
+  // TODO: instanceof を使って型を判定し、型ごとのメッセージを出力してください
+}
+`,
+    'package.json': JSON.stringify({
+      name: 'classes',
+      version: '1.0.0',
+      type: 'module',
+      dependencies: { tsx: '^4.0.0', typescript: '^5.0.0' },
+    }, null, 2),
+  },
+  hints: [
+    '`abstract class Shape { constructor(protected readonly name: string) {} }` で基底クラスを作ります。`protected` にするとサブクラスから参照できます',
+    '`abstract area(): number;` のように本体なしで宣言すると抽象メソッドになります',
+    '`class Circle extends Shape { constructor(private readonly radius: number) { super("Circle") } }` のように `super()` で親クラスを初期化します',
+    'ヘロンの公式: `const s = (a + b + c) / 2; return Math.sqrt(s * (s - a) * (s - b) * (s - c))`',
+    '`instanceof` は `shape instanceof Circle` のように使います。型ガードとしても機能します',
+  ],
+  solution: {
+    'index.ts': `// クラス・継承・抽象クラス
+
+abstract class Shape {
+  constructor(protected readonly name: string) {}
+
+  abstract area(): number
+  abstract perimeter(): number
+
+  describe(): string {
+    return \`\${this.name}: area=\${this.area().toFixed(2)}, perimeter=\${this.perimeter().toFixed(2)}\`
+  }
+}
+
+class Circle extends Shape {
+  constructor(private readonly radius: number) {
+    super('Circle')
+  }
+
+  area(): number {
+    return Math.PI * this.radius ** 2
+  }
+
+  perimeter(): number {
+    return 2 * Math.PI * this.radius
+  }
+}
+
+class Rectangle extends Shape {
+  constructor(
+    private readonly width: number,
+    private readonly height: number,
+  ) {
+    super('Rectangle')
+  }
+
+  area(): number {
+    return this.width * this.height
+  }
+
+  perimeter(): number {
+    return 2 * (this.width + this.height)
+  }
+}
+
+class Triangle extends Shape {
+  constructor(
+    private readonly a: number,
+    private readonly b: number,
+    private readonly c: number,
+  ) {
+    super('Triangle')
+  }
+
+  area(): number {
+    // ヘロンの公式：3辺の長さから面積を求める
+    const s = (this.a + this.b + this.c) / 2
+    return Math.sqrt(s * (s - this.a) * (s - this.b) * (s - this.c))
+  }
+
+  perimeter(): number {
+    return this.a + this.b + this.c
+  }
+}
+
+function printShapeInfo(shapes: Shape[]): void {
+  shapes.forEach(shape => console.log(shape.describe()))
+}
+
+// --- 動作確認 ---
+const shapes: Shape[] = [
+  new Circle(5),
+  new Rectangle(4, 6),
+  new Triangle(3, 4, 5),
+]
+
+printShapeInfo(shapes)
+
+console.log('\\n=== instanceof チェック ===')
+for (const shape of shapes) {
+  if (shape instanceof Circle) {
+    console.log(\`\${shape.describe()} → Circle です\`)
+  } else if (shape instanceof Rectangle) {
+    console.log(\`\${shape.describe()} → Rectangle です\`)
+  } else if (shape instanceof Triangle) {
+    console.log(\`\${shape.describe()} → Triangle です\`)
+  }
+}
+`,
+  },
+}
+
 export const programmingScenarios: ProgrammingScenario[] = [
   scenario1,
   scenario2,
   scenario3,
   scenario4,
+  scenario5,
 ]
