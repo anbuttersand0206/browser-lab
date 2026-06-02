@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#16213e"/>
+    </linearGradient>
+    <linearGradient id="liquid-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0096c7"/>
+      <stop offset="100%" stop-color="#023e8a"/>
+    </linearGradient>
+    <clipPath id="flask-clip">
+      <path d="M 206 80 L 206 212 L 76 400 Q 60 440 100 440 L 412 440 Q 452 440 436 400 L 306 212 L 306 80 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- 角丸の背景 -->
+  <rect width="512" height="512" rx="96" fill="url(#bg-grad)"/>
+
+  <!-- フラスコ本体の輪郭 -->
+  <path d="M 206 80 L 206 212 L 76 400 Q 60 440 100 440 L 412 440 Q 452 440 436 400 L 306 212 L 306 80 Z"
+        fill="none" stroke="#4fc3f7" stroke-width="22" stroke-linejoin="round"/>
+
+  <!-- ネック上部のキャップ（フラスコの口） -->
+  <rect x="186" y="60" width="140" height="30" rx="15" fill="#4fc3f7"/>
+
+  <!-- 液体（フラスコ形にクリップ） -->
+  <rect x="50" y="318" width="412" height="148" fill="url(#liquid-grad)" opacity="0.88" clip-path="url(#flask-clip)"/>
+
+  <!-- 液面のハイライトライン -->
+  <line x1="118" y1="318" x2="394" y2="318" stroke="#4fc3f7" stroke-width="3" opacity="0.4"/>
+
+  <!-- 泡（学習 = 活発な化学反応を表現） -->
+  <circle cx="218" cy="372" r="18" fill="#b3e5fc" opacity="0.60"/>
+  <circle cx="272" cy="352" r="12" fill="#b3e5fc" opacity="0.48"/>
+  <circle cx="314" cy="390" r="8"  fill="#b3e5fc" opacity="0.36"/>
+</svg>

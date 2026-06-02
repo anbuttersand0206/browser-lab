@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <!--
+    OGP 画像（1200×630）。
+    SNS シェア時のカード画像として使用する推奨サイズ。
+    Twitter・Discord 等は PNG を優先するが、多くのプラットフォームは SVG にも対応している。
+  -->
+  <defs>
+    <linearGradient id="og-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#0d1b2a"/>
+    </linearGradient>
+    <linearGradient id="og-liq" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0096c7"/>
+      <stop offset="100%" stop-color="#023e8a"/>
+    </linearGradient>
+    <clipPath id="og-flask-clip">
+      <path d="M 134 120 L 134 248 L 34 448 Q 18 490 58 490 L 344 490 Q 384 490 368 448 L 268 248 L 268 120 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- 背景 -->
+  <rect width="1200" height="630" fill="url(#og-bg)"/>
+
+  <!-- 左側：フラスコ装飾 -->
+  <path d="M 134 120 L 134 248 L 34 448 Q 18 490 58 490 L 344 490 Q 384 490 368 448 L 268 248 L 268 120 Z"
+        fill="none" stroke="#4fc3f7" stroke-width="14" stroke-linejoin="round" opacity="0.9"/>
+  <rect x="118" y="100" width="166" height="28" rx="14" fill="#4fc3f7" opacity="0.9"/>
+  <rect x="16" y="368" width="376" height="144" fill="url(#og-liq)" opacity="0.80" clip-path="url(#og-flask-clip)"/>
+  <circle cx="142" cy="420" r="20" fill="#b3e5fc" opacity="0.55"/>
+  <circle cx="200" cy="400" r="13" fill="#b3e5fc" opacity="0.42"/>
+  <circle cx="248" cy="440" r="9"  fill="#b3e5fc" opacity="0.32"/>
+
+  <!-- 装飾ライン -->
+  <line x1="440" y1="80" x2="440" y2="550" stroke="#4fc3f7" stroke-width="1.5" opacity="0.2"/>
+
+  <!-- 右側：テキストコンテンツ -->
+  <!-- アプリ名 -->
+  <text x="490" y="220" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="80" font-weight="700" fill="#ffffff" letter-spacing="-2">Browser Lab</text>
+
+  <!-- キャッチフレーズ -->
+  <text x="492" y="290" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="32" fill="#4fc3f7" letter-spacing="1">🧪 ブラウザだけで動く学習プラットフォーム</text>
+
+  <!-- 区切り線 -->
+  <line x1="490" y1="330" x2="1140" y2="330" stroke="#4fc3f7" stroke-width="1.5" opacity="0.3"/>
+
+  <!-- 特徴バッジ -->
+  <!-- Node.js / TypeScript -->
+  <rect x="490" y="360" width="195" height="44" rx="22" fill="#0078d4" opacity="0.85"/>
+  <text x="588" y="388" font-family="'Segoe UI', Arial, sans-serif" font-size="18"
+        fill="#ffffff" text-anchor="middle" font-weight="600">⚡ TypeScript / Node.js</text>
+
+  <!-- PostgreSQL -->
+  <rect x="704" y="360" width="170" height="44" rx="22" fill="#023e8a" opacity="0.85"/>
+  <text x="789" y="388" font-family="'Segoe UI', Arial, sans-serif" font-size="18"
+        fill="#90e0ef" text-anchor="middle" font-weight="600">🗄️ PostgreSQL</text>
+
+  <!-- 説明文 -->
+  <text x="492" y="460" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="24" fill="#aaaaaa">インストール不要。WebContainers + PGLite で</text>
+  <text x="492" y="496" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="24" fill="#aaaaaa">本物の開発体験がブラウザだけで手に入る。</text>
+</svg>

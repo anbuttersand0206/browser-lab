@@ -1,0 +1,24 @@
+Browser Lab
+Copyright (c) 2026 Hama
+
+This product includes software developed by third parties.
+The following components are licensed under the Apache License, Version 2.0:
+
+---
+
+@electric-sql/pglite
+Copyright (c) 2023 Electric SQL
+https://github.com/electric-sql/pglite
+Licensed under the Apache License, Version 2.0
+
+---
+
+TypeScript
+Copyright (c) Microsoft Corporation
+https://github.com/microsoft/TypeScript
+Licensed under the Apache License, Version 2.0
+
+---
+
+A copy of the Apache License, Version 2.0 is available at:
+https://www.apache.org/licenses/LICENSE-2.0

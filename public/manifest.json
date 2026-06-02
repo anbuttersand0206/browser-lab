@@ -1,0 +1,44 @@
+{
+  "name": "Browser Lab",
+  "short_name": "Browser Lab",
+  "description": "インストール不要。ブラウザだけで PostgreSQL と Node.js/TypeScript を学べる学習プラットフォーム。",
+  "lang": "ja",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "theme_color": "#1e1e1e",
+  "background_color": "#1e1e1e",
+  "categories": ["education", "developer-tools"],
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "プログラミング学習",
+      "short_name": "プログラミング",
+      "description": "TypeScript / Node.js の学習コース",
+      "url": "./#/programming",
+      "icons": [{ "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "DB学習コース",
+      "short_name": "DB学習",
+      "description": "PostgreSQL / SQL の学習コース",
+      "url": "./#/database",
+      "icons": [{ "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ]
+}

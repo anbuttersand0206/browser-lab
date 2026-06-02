@@ -1,0 +1,25 @@
+# Windows・macOS・Linux 間で改行コードを LF に統一する
+* text=auto eol=lf
+
+# テキストファイルを明示的に LF で管理する
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.js    text eol=lf
+*.jsx   text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.css   text eol=lf
+*.html  text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.toml  text eol=lf
+*.sh    text eol=lf
+
+# バイナリファイルは改行変換・diff 対象外にする
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.wasm  binary
+*.data  binary

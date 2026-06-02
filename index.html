@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- ============================================================
+         セキュリティ：Content Security Policy
+         完全な制限は WebContainers（eval 必須）と CodeMirror（インラインスタイル）が
+         妨げるため、最低限の制限に留める。
+           object-src 'none'  : Flash・Java 等プラグインによるコード実行を禁止する
+           base-uri   'self'  : <base href="..."> タグ差し込みによるリンク乗っ取りを防ぐ
+           frame-ancestors は HTTP ヘッダーでのみ有効（meta タグでは機能しない）
+         ============================================================ -->
+    <meta http-equiv="Content-Security-Policy"
+          content="object-src 'none'; base-uri 'self';" />
+
+    <!-- ============================================================
+         SEO：基本メタタグ
+         ============================================================ -->
+    <title>Browser Lab — ブラウザだけで学べるプログラミング・SQL学習環境</title>
+    <meta name="description"
+          content="インストール不要。WebContainers で Node.js/TypeScript を実行、PGLite でブラウザ内 PostgreSQL を操作できる完全ブラウザ完結型の学習プラットフォーム。" />
+    <meta name="keywords"
+          content="プログラミング学習, SQL学習, TypeScript, Node.js, PostgreSQL, WebContainers, PGLite, ブラウザ, オンライン学習, インタラクティブ" />
+    <meta name="author" content="Browser Lab" />
+    <meta name="robots" content="index, follow" />
+    <!--
+      canonical URL: GitHub Pages にデプロイする際は
+      https://<ユーザー名>.github.io/<リポジトリ名>/ に書き換えてください。
+    -->
+    <link rel="canonical" href="https://anbuttersand0206.github.io/browser-lab/" />
+
+    <!-- ============================================================
+         SEO：Open Graph Protocol（SNS シェア時のカード表示）
+         ============================================================ -->
+    <meta property="og:type"        content="website" />
+    <meta property="og:locale"      content="ja_JP" />
+    <meta property="og:site_name"   content="Browser Lab" />
+    <meta property="og:title"
+          content="Browser Lab — ブラウザだけで学べるプログラミング・SQL学習環境" />
+    <meta property="og:description"
+          content="インストール不要。WebContainers で Node.js/TypeScript を実行、PGLite でブラウザ内 PostgreSQL を操作できる完全ブラウザ完結型の学習プラットフォーム。" />
+    <!--
+      og:url / og:image: GitHub Pages にデプロイする際に実際の URL に書き換えてください。
+      og:image は 1200×630px の画像（PNG/JPG 推奨）を指定すると SNS での表示が安定します。
+    -->
+    <meta property="og:url"
+          content="https://anbuttersand0206.github.io/browser-lab/" />
+    <meta property="og:image"
+          content="https://anbuttersand0206.github.io/browser-lab/og-image.svg" />
+    <meta property="og:image:width"  content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt"
+          content="Browser Lab — フラスコアイコンとアプリ名・説明文のバナー画像" />
+
+    <!-- ============================================================
+         SEO：Twitter Card（X でのシェア表示）
+         ============================================================ -->
+    <meta name="twitter:card"
+          content="summary_large_image" />
+    <meta name="twitter:title"
+          content="Browser Lab — ブラウザだけで学べるプログラミング・SQL学習環境" />
+    <meta name="twitter:description"
+          content="インストール不要。WebContainers で Node.js/TypeScript を実行、PGLite でブラウザ内 PostgreSQL を操作できる完全ブラウザ完結型の学習プラットフォーム。" />
+    <meta name="twitter:image"
+          content="https://anbuttersand0206.github.io/browser-lab/og-image.svg" />
+    <meta name="twitter:image:alt"
+          content="Browser Lab のバナー画像" />
+
+    <!-- ============================================================
+         SEO：構造化データ（JSON-LD）
+         検索エンジンがアプリの種別・無料・対応 OS を正確に認識できるようにする。
+         ============================================================ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Browser Lab",
+      "description": "インストール不要。ブラウザだけで PostgreSQL と Node.js/TypeScript を学べる学習プラットフォーム。",
+      "url": "https://anbuttersand0206.github.io/browser-lab/",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "Any",
+      "inLanguage": "ja",
+      "isAccessibleForFree": true,
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "JPY"
+      },
+      "featureList": [
+        "ブラウザ内 Node.js 実行（WebContainers）",
+        "ブラウザ内 PostgreSQL（PGLite）",
+        "TypeScript / SQL シナリオ学習",
+        "JSON エクスポート・インポートによる作業継続"
+      ]
+    }
+    </script>
+
+    <!-- ============================================================
+         PWA：Web App Manifest・アイコン・テーマカラー
+         ============================================================ -->
+    <link rel="manifest" href="./manifest.json" />
+    <!--
+      theme-color をダーク／ライトで切り替える。
+      ブラウザの UI（アドレスバーなど）の色がシステム設定に追従する。
+    -->
+    <meta name="theme-color" content="#1e1e1e" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+
+    <!-- iOS PWA 設定 -->
+    <meta name="apple-mobile-web-app-capable"          content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title"            content="Browser Lab" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.svg" />
+
+    <!-- ファビコン（SVG は現代ブラウザで自動的にダーク／ライト切り替えに対応できる） -->
+    <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+
+    <!-- ============================================================
+         Service Worker 登録
+         GitHub Pages はカスタムヘッダーを設定できないため、sw.js が
+         COOP/COEP/CORP ヘッダーを付与して SharedArrayBuffer を有効化する。
+         crossOriginIsolated が true の場合（開発サーバーなど）は登録不要。
+         ============================================================ -->
+    <script>
+      (function () {
+        if (!('serviceWorker' in navigator) || crossOriginIsolated) return
+
+        navigator.serviceWorker
+          .register('./sw.js', { scope: './' })
+          .then(function (registration) {
+            // インストール中または待機中の SW があればアクティブ化を待ってリロードする。
+            // アクティブ化後にブラウザが COOP/COEP ヘッダーを受け取り、
+            // crossOriginIsolated = true になる。
+            var pendingSW = registration.installing || registration.waiting
+            if (pendingSW) {
+              pendingSW.addEventListener('statechange', function () {
+                if (this.state === 'activated') window.location.reload()
+              })
+              return
+            }
+            // すでに active な SW がある場合はリロードして isolation を有効にする
+            if (registration.active) {
+              window.location.reload()
+            }
+          })
+          .catch(function (err) {
+            console.warn('[Browser Lab] Service Worker の登録に失敗しました:', err)
+          })
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./src/main.tsx"></script>
+  </body>
+</html>

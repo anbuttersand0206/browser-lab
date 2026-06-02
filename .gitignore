@@ -1,0 +1,27 @@
+# 依存パッケージ
+node_modules/
+
+# ビルド成果物
+dist/
+
+# 環境変数（シークレットを含む可能性があるため絶対にコミットしない）
+.env
+.env.local
+.env.*.local
+
+# エディタ・OS が自動生成するメタファイル
+.DS_Store
+**/.DS_Store
+Thumbs.db
+*.local
+
+# エディタ設定（プロジェクト共有しない個人設定）
+.idea/
+.vscode/settings.json
+.vscode/extensions.json
+
+# TypeScript ビルドキャッシュ
+*.tsbuildinfo
+
+# テストカバレッジ
+coverage/

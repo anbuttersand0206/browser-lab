@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!--
+    maskable アイコン：Android の適応型アイコン用。
+    仕様上、コンテンツは全体の内側 80%（safe zone = 外周 10% = 51px 内側）に収める必要がある。
+    フルブリードの背景色で任意の形（円・スクワークル）でのクロップに対応する。
+  -->
+  <defs>
+    <linearGradient id="mbg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#16213e"/>
+    </linearGradient>
+    <linearGradient id="mliq" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0096c7"/>
+      <stop offset="100%" stop-color="#023e8a"/>
+    </linearGradient>
+    <clipPath id="mflask-clip">
+      <!-- safe zone 内に収まるようフラスコを中央に縮小配置（20% スケールダウン） -->
+      <path d="M 224 104 L 224 224 L 122 382 Q 108 416 142 416 L 370 416 Q 404 416 390 382 L 288 224 L 288 104 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- フルブリード背景（任意形クロップに対応するため角丸なし） -->
+  <rect width="512" height="512" fill="url(#mbg)"/>
+
+  <!-- フラスコ輪郭（safe zone 内） -->
+  <path d="M 224 104 L 224 224 L 122 382 Q 108 416 142 416 L 370 416 Q 404 416 390 382 L 288 224 L 288 104 Z"
+        fill="none" stroke="#4fc3f7" stroke-width="20" stroke-linejoin="round"/>
+
+  <!-- ネックキャップ -->
+  <rect x="208" y="86" width="96" height="26" rx="13" fill="#4fc3f7"/>
+
+  <!-- 液体 -->
+  <rect x="100" y="308" width="312" height="128" fill="url(#mliq)" opacity="0.88" clip-path="url(#mflask-clip)"/>
+
+  <!-- 泡 -->
+  <circle cx="222" cy="358" r="14" fill="#b3e5fc" opacity="0.60"/>
+  <circle cx="264" cy="342" r="9"  fill="#b3e5fc" opacity="0.48"/>
+  <circle cx="298" cy="372" r="6"  fill="#b3e5fc" opacity="0.36"/>
+</svg>

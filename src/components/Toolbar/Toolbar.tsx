@@ -1,0 +1,68 @@
+import { Play, Square, Download, FolderOpen } from 'lucide-react'
+
+interface ToolbarProps {
+  isDirty: boolean
+  onRun?: () => void
+  onStop?: () => void
+  isRunning?: boolean
+  onSave: () => void
+  onLoad: () => void
+  extra?: React.ReactNode
+}
+
+export function Toolbar({ isDirty, onRun, onStop, isRunning, onSave, onLoad, extra }: ToolbarProps) {
+  return (
+    <div className="flex h-9 flex-shrink-0 items-center gap-1 border-b border-dark-border bg-dark-tab px-3 dark:border-dark-border dark:bg-dark-tab light:border-light-border light:bg-light-tab">
+      {onRun && (
+        <button
+          onClick={isRunning ? onStop : onRun}
+          className={`flex items-center gap-1.5 rounded px-3 py-1 text-xs font-medium transition-colors ${
+            isRunning
+              ? 'bg-red-600 text-white hover:bg-red-700'
+              : 'bg-green-600 text-white hover:bg-green-700'
+          }`}
+        >
+          {isRunning ? (
+            <>
+              <span className="inline-block h-2 w-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              停止
+            </>
+          ) : (
+            <>
+              <Play size={12} />
+              実行
+            </>
+          )}
+        </button>
+      )}
+
+      {extra}
+
+      <div className="flex-1" />
+
+      {isDirty && (
+        <span className="mr-2 flex items-center gap-1.5 text-xs text-yellow-400" title="未保存の変更があります">
+          <Square size={8} className="fill-yellow-400" />
+          未保存
+        </span>
+      )}
+
+      <button
+        onClick={onSave}
+        title="JSONとしてエクスポート"
+        className="flex items-center gap-1 rounded px-2.5 py-1 text-xs text-dark-textDim transition-colors hover:bg-dark-hover hover:text-dark-text dark:text-dark-textDim dark:hover:bg-dark-hover dark:hover:text-dark-text light:text-light-textDim light:hover:bg-light-hover light:hover:text-light-text"
+      >
+        <Download size={13} />
+        保存
+      </button>
+      <button
+        onClick={onLoad}
+        title="JSONからインポート"
+        className="flex items-center gap-1 rounded px-2.5 py-1 text-xs text-dark-textDim transition-colors hover:bg-dark-hover hover:text-dark-text dark:text-dark-textDim dark:hover:bg-dark-hover dark:hover:text-dark-text light:text-light-textDim light:hover:bg-light-hover light:hover:text-light-text"
+      >
+        <FolderOpen size={13} />
+        読み込む
+      </button>
+    </div>
+  )
+}

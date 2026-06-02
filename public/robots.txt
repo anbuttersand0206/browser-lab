@@ -1,0 +1,8 @@
+# Browser Lab — robots.txt
+# 学習プラットフォームのため、すべてのクローラーにインデックスを許可する
+
+User-agent: *
+Allow: /
+
+# sw.js はブラウザが直接アクセスするものでクロールする意味がないため除外する
+Disallow: /sw.js

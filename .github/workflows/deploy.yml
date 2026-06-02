@@ -1,0 +1,75 @@
+# GitHub Pages へのデプロイワークフロー
+#
+# main ブランチへの push をトリガーに Vite ビルドを実行し、
+# dist/ を GitHub Pages へ公開する。
+#
+# 【GitHub リポジトリ側で必要な設定】
+# Settings > Pages > Source を "GitHub Actions" に変更すること。
+# デフォルトの "Deploy from a branch" のままでは
+# このワークフローによるデプロイが有効にならない。
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  # 手動実行も許可する（デバッグや強制デプロイ時に使う）
+  workflow_dispatch:
+
+# Pages への書き込みと OIDC トークン発行に必要な最小権限。
+# contents: read のみで checkout できる。write は不要。
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時デプロイを防ぐ。
+# 実行中のデプロイをキャンセルせず後続をキューで待機させることで、
+# 途中のデプロイが中断して壊れた状態で公開されるのを防ぐ。
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: ビルド
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.js をセットアップ
+        uses: actions/setup-node@v4
+        with:
+          # ローカル開発環境との差異を減らすため LTS の最新版を使う。
+          # package.json に engines.node が未指定のため、ここで固定する。
+          node-version: 22
+          cache: npm
+
+      - name: 依存パッケージをインストール
+        # npm ci は package-lock.json を厳密に再現するため、
+        # npm install より再現性が高くビルドの冪等性を保てる。
+        run: npm ci
+
+      - name: プロダクションビルドを実行
+        run: npm run build
+
+      - name: GitHub Pages 用アーティファクトをアップロード
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # vite.config.ts の build.outDir デフォルト値が dist/
+          path: dist
+
+  deploy:
+    name: デプロイ
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      # デプロイ先 URL を Actions の UI に表示するために設定する
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: GitHub Pages へデプロイ
+        id: deploy
+        uses: actions/deploy-pages@v4
