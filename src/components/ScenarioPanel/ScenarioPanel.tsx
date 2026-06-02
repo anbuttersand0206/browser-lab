@@ -9,6 +9,9 @@ interface ScenarioPanelProps {
 
 type PanelTab = 'problem' | 'hints' | 'solution'
 
+// boolean フラグ 2 個では「confirming（確認中）」という第 3 状態が表現できないため union で定義する
+type SolutionState = 'hidden' | 'confirming' | 'visible'
+
 const PANEL_TABS: { id: PanelTab; label: string }[] = [
   { id: 'problem', label: '問題文' },
   { id: 'hints', label: 'ヒント' },
@@ -17,7 +20,15 @@ const PANEL_TABS: { id: PanelTab; label: string }[] = [
 
 export function ScenarioPanel({ title, description, hints, solution }: ScenarioPanelProps) {
   const [activeTab, setActiveTab] = useState<PanelTab>('problem')
-  const [isSolutionVisible, setIsSolutionVisible] = useState(false)
+  const [solutionState, setSolutionState] = useState<SolutionState>('hidden')
+
+  // 何番目のヒントまで表示したか（0 = 未表示）。
+  // ヒントを一気に見せずに段階的に開示することで、
+  // 学習者が自力で考える時間を確保する。
+  const [visibleHintCount, setVisibleHintCount] = useState(0)
+
+  const hasMoreHints = visibleHintCount < hints.length
+  const allHintsRevealed = visibleHintCount >= hints.length && hints.length > 0
 
   const solutionText =
     typeof solution === 'string'
@@ -62,7 +73,13 @@ export function ScenarioPanel({ title, description, hints, solution }: ScenarioP
 
         {activeTab === 'hints' && (
           <div className="space-y-3">
-            {hints.map((hint, i) => (
+            {visibleHintCount === 0 && (
+              <p className="text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
+                まず自分で考えてみましょう。行き詰まったらヒントを少しずつ開きましょう。
+              </p>
+            )}
+
+            {hints.slice(0, visibleHintCount).map((hint, i) => (
               <div
                 key={i}
                 className="rounded-md border border-yellow-600/30 bg-yellow-600/10 p-3"
@@ -75,12 +92,27 @@ export function ScenarioPanel({ title, description, hints, solution }: ScenarioP
                 </div>
               </div>
             ))}
+
+            {hasMoreHints && (
+              <button
+                onClick={() => setVisibleHintCount((prev) => prev + 1)}
+                className="w-full rounded-md border border-yellow-600/40 px-3 py-2 text-xs font-medium text-yellow-400 transition-colors hover:border-yellow-500/60 hover:bg-yellow-600/10"
+              >
+                ヒント {visibleHintCount + 1} を見る ({visibleHintCount + 1}/{hints.length})
+              </button>
+            )}
+
+            {allHintsRevealed && (
+              <p className="text-center text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
+                すべてのヒントを表示しました
+              </p>
+            )}
           </div>
         )}
 
         {activeTab === 'solution' && (
           <div>
-            {!isSolutionVisible ? (
+            {solutionState === 'hidden' && (
               <div className="flex flex-col items-center gap-4 py-8">
                 <div className="text-4xl">🔒</div>
                 <p className="text-center text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
@@ -88,18 +120,46 @@ export function ScenarioPanel({ title, description, hints, solution }: ScenarioP
                   解答例を見る前にヒントを参考にしてください。
                 </p>
                 <button
-                  onClick={() => setIsSolutionVisible(true)}
+                  onClick={() => setSolutionState('confirming')}
                   className="rounded-md bg-blue-600 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-blue-700"
                 >
                   解答例を表示する
                 </button>
               </div>
-            ) : (
+            )}
+
+            {solutionState === 'confirming' && (
+              <div className="flex flex-col items-center gap-4 py-8">
+                <div className="text-4xl">⚠️</div>
+                <p className="text-center text-sm font-medium text-dark-text dark:text-dark-text light:text-light-text">
+                  本当に解答例を見ますか？
+                </p>
+                <p className="text-center text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
+                  自力で解けそうならヒントをもう一度確認してみましょう。
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setSolutionState('hidden')}
+                    className="rounded-md border border-dark-border px-4 py-2 text-xs font-medium text-dark-textDim transition-colors hover:text-dark-text dark:border-dark-border dark:text-dark-textDim dark:hover:text-dark-text light:border-light-border light:text-light-textDim light:hover:text-light-text"
+                  >
+                    やはりやめる
+                  </button>
+                  <button
+                    onClick={() => setSolutionState('visible')}
+                    className="rounded-md bg-amber-600 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-amber-700"
+                  >
+                    はい、表示する
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {solutionState === 'visible' && (
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-xs font-semibold text-green-400">解答例</span>
                   <button
-                    onClick={() => setIsSolutionVisible(false)}
+                    onClick={() => setSolutionState('hidden')}
                     className="text-xs text-dark-textDim hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
                   >
                     非表示にする

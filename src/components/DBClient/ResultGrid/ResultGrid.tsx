@@ -1,10 +1,30 @@
+import { useState } from 'react'
+import { Copy, Check } from 'lucide-react'
 import type { QueryResult } from '../../../hooks/usePGLite'
 
 interface ResultGridProps {
   results: QueryResult[]
 }
 
+// コピー操作の UI フィードバック状態
+type CopyState = 'idle' | 'copied'
+
+// クエリ結果を TSV（タブ区切り）文字列に変換する。
+// スプレッドシートへの貼り付け時に列を正しく分割するために TSV 形式を採用している。
+function buildTsv(result: QueryResult): string {
+  const headerRow = result.fields.map(f => f.name).join('\t')
+  const dataRows = result.rows.map(row =>
+    result.fields.map(f => {
+      const cellValue = row[f.name]
+      return cellValue === null ? 'NULL' : String(cellValue)
+    }).join('\t')
+  )
+  return [headerRow, ...dataRows].join('\n')
+}
+
 export function ResultGrid({ results }: ResultGridProps) {
+  const [copyState, setCopyState] = useState<CopyState>('idle')
+
   if (results.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
@@ -14,6 +34,21 @@ export function ResultGrid({ results }: ResultGridProps) {
   }
 
   const latest = results[results.length - 1]
+
+  const handleCopyResult = async () => {
+    // エラー時はエラーメッセージを、正常時は TSV をコピーする
+    const textToCopy = latest.error
+      ? latest.error
+      : buildTsv(latest)
+
+    await navigator.clipboard.writeText(textToCopy)
+
+    setCopyState('copied')
+    // 1.5 秒後に元のアイコンに戻す（ユーザーへのフィードバック表示期間）
+    setTimeout(() => setCopyState('idle'), 1500)
+  }
+
+  const isCopied = copyState === 'copied'
 
   return (
     <div className="flex h-full flex-col">
@@ -37,6 +72,21 @@ export function ResultGrid({ results }: ResultGridProps) {
             {latest.sql.slice(0, 100)}
           </span>
         </div>
+
+        <button
+          onClick={handleCopyResult}
+          title={isCopied ? 'コピーしました' : '結果をクリップボードにコピー（TSV形式）'}
+          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-colors text-dark-textDim hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
+        >
+          {isCopied ? (
+            <Check size={12} className="text-green-400" />
+          ) : (
+            <Copy size={12} />
+          )}
+          <span className={isCopied ? 'text-green-400' : ''}>
+            {isCopied ? 'コピー済み' : 'コピー'}
+          </span>
+        </button>
       </div>
 
       {latest.error && (

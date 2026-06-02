@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { useDebounce } from '../../hooks/useDebounce'
 import { useNavigate } from 'react-router-dom'
 import { Database, Sun, Moon, ArrowLeft, Play, ChevronRight } from 'lucide-react'
 import { usePGLite, type QueryResult } from '../../hooks/usePGLite'
@@ -29,6 +30,45 @@ interface DragState {
   startX: number
   startY: number
   startSizePx: number
+}
+
+// LocalStorage キー。他コースと競合しないようにプレフィックスを揃える。
+const LS_KEY = 'browser-lab:db:progress'
+
+// 入力が止まってから保存するまでの待機時間（ミリ秒）
+const SAVE_DEBOUNCE_MS = 1000
+
+// バージョンフィールドを付けることで、将来のデータ形式変更時に
+// 古い保存データを安全に棄却できる。
+interface DbProgress {
+  version: 1
+  scenarioId: string
+  sql: string
+  updatedAt: string
+}
+
+// JSON.parse 後の unknown を型安全に検証する型ガード。
+// zod を追加しない代わりに最小限のフィールドチェックで代替する。
+function isValidDbProgress(value: unknown): value is DbProgress {
+  if (typeof value !== 'object' || value === null) return false
+  const v = value as Record<string, unknown>
+  return v.version === 1 && typeof v.scenarioId === 'string' && typeof v.sql === 'string'
+}
+
+// 前回終了時のシナリオと SQL を LocalStorage から復元する。
+// バージョン不一致・JSON 破損・存在しないシナリオ ID はいずれもデフォルトにフォールバックする。
+function restoreDbProgress(): { scenario: DatabaseScenario; sql: string } {
+  try {
+    const raw = localStorage.getItem(LS_KEY)
+    if (raw === null) return { scenario: databaseScenarios[0], sql: databaseScenarios[0].initialSQL }
+    const parsed: unknown = JSON.parse(raw)
+    if (!isValidDbProgress(parsed)) return { scenario: databaseScenarios[0], sql: databaseScenarios[0].initialSQL }
+    const scenario = databaseScenarios.find((s) => s.id === parsed.scenarioId) ?? databaseScenarios[0]
+    return { scenario, sql: parsed.sql }
+  } catch {
+    // JSON 破損時はデフォルトで起動する
+    return { scenario: databaseScenarios[0], sql: databaseScenarios[0].initialSQL }
+  }
 }
 
 // PGLite のリソース仕様（同意モーダルに渡す）
@@ -65,10 +105,11 @@ export default function DatabasePage() {
 
   const { ready, error: dbError, exec, tables, refreshTables, exportSnapshot } = usePGLite(hasConsented)
 
-  const [scenario, setScenario] = useState<DatabaseScenario>(databaseScenarios[0])
-  const [sql, setSql] = useState(scenario.initialSQL)
+  // 前回の進捗を復元する（ページ再訪問時にシナリオ選択と編集内容を引き継ぐ）
+  const [scenario, setScenario] = useState<DatabaseScenario>(() => restoreDbProgress().scenario)
+  const [sql, setSql] = useState<string>(() => restoreDbProgress().sql)
   // savedSql はエクスポート後の状態を保持し、isDirty の基準となる
-  const [savedSql, setSavedSql] = useState(scenario.initialSQL)
+  const [savedSql, setSavedSql] = useState<string>(() => restoreDbProgress().sql)
   const [latestResult, setLatestResult] = useState<QueryResult[]>([])
   // queryHistory は JSON エクスポート用に実行済みクエリを蓄積する
   const [queryHistory, setQueryHistory] = useState<QueryResult[]>([])
@@ -226,6 +267,21 @@ export default function DatabasePage() {
       window.removeEventListener('mouseup', handleMouseUp)
     }
   }, [])
+
+  // 入力が止まってから SAVE_DEBOUNCE_MS 後に保存する。
+  // 1文字ごとに同期書き込みしないための debounce。
+  const debouncedScenarioId = useDebounce(scenario.id, SAVE_DEBOUNCE_MS)
+  const debouncedSql = useDebounce(sql, SAVE_DEBOUNCE_MS)
+
+  useEffect(() => {
+    const progress: DbProgress = {
+      version: 1,
+      scenarioId: debouncedScenarioId,
+      sql: debouncedSql,
+      updatedAt: new Date().toISOString(),
+    }
+    localStorage.setItem(LS_KEY, JSON.stringify(progress))
+  }, [debouncedScenarioId, debouncedSql])
 
   // ステータスバー表示値を説明変数として先に計算し、JSX 内の条件式を減らす
   // 同意前は「起動待機中」を表示し、意図せず起動していないことをユーザーに示す
@@ -389,7 +445,9 @@ export default function DatabasePage() {
           style={{ width: paneSizes.scenarioWidthPx }}
           className="flex-shrink-0 overflow-hidden border-l border-dark-border dark:border-dark-border light:border-light-border"
         >
+          {/* シナリオ変更時に ScenarioPanel を再マウントし、ヒント開示数・解答表示状態をリセットする */}
           <ScenarioPanel
+            key={scenario.id}
             title={scenario.title}
             description={scenario.description}
             hints={scenario.hints}

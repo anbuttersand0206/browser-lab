@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { useDebounce } from '../../hooks/useDebounce'
 import { useNavigate } from 'react-router-dom'
 import { Zap, Sun, Moon, ArrowLeft, ChevronRight } from 'lucide-react'
 import { useWebContainer, type ContainerStatus } from '../../hooks/useWebContainer'
@@ -28,6 +29,51 @@ interface DragState {
   startX: number
   startY: number
   startSizePx: number
+}
+
+// LocalStorage キー。他コースと競合しないようにプレフィックスを揃える。
+const LS_KEY = 'browser-lab:prog:progress'
+
+// 入力が止まってから保存するまでの待機時間（ミリ秒）
+const SAVE_DEBOUNCE_MS = 1000
+
+// バージョンフィールドを付けることで、将来のデータ形式変更時に
+// 古い保存データを安全に棄却できる。
+interface ProgProgress {
+  version: 1
+  scenarioId: string
+  files: Record<string, string>
+  updatedAt: string
+}
+
+// files の値がすべて string であることを検証するヘルパー。
+// JSON.parse で得た unknown から Record<string, string> を型安全に取り出すために使う。
+function isStringRecord(value: unknown): value is Record<string, string> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  return Object.values(value as object).every((v) => typeof v === 'string')
+}
+
+// JSON.parse 後の unknown を型安全に検証する型ガード。
+function isValidProgProgress(value: unknown): value is ProgProgress {
+  if (typeof value !== 'object' || value === null) return false
+  const v = value as Record<string, unknown>
+  return v.version === 1 && typeof v.scenarioId === 'string' && isStringRecord(v.files)
+}
+
+// 前回終了時のシナリオとファイル群を LocalStorage から復元する。
+// バージョン不一致・JSON 破損・存在しないシナリオ ID はいずれもデフォルトにフォールバックする。
+function restoreProgrammingProgress(): { scenario: ProgrammingScenario; files: Record<string, string> } {
+  try {
+    const raw = localStorage.getItem(LS_KEY)
+    if (raw === null) return { scenario: programmingScenarios[0], files: programmingScenarios[0].files }
+    const parsed: unknown = JSON.parse(raw)
+    if (!isValidProgProgress(parsed)) return { scenario: programmingScenarios[0], files: programmingScenarios[0].files }
+    const scenario = programmingScenarios.find((s) => s.id === parsed.scenarioId) ?? programmingScenarios[0]
+    return { scenario, files: parsed.files }
+  } catch {
+    // JSON 破損時はデフォルトで起動する
+    return { scenario: programmingScenarios[0], files: programmingScenarios[0].files }
+  }
 }
 
 // ContainerStatus をステータスバー表示用の文字列・色に変換する
@@ -88,11 +134,12 @@ export default function ProgrammingPage() {
 
   const { status, output, run, killProcess, clearOutput, readFileFromContainer } = useWebContainer(hasConsented)
 
-  const [scenario, setScenario] = useState<ProgrammingScenario>(programmingScenarios[0])
-  const [files, setFiles] = useState<Record<string, string>>(scenario.files)
+  // 前回の進捗を復元する（ページ再訪問時にシナリオ選択と編集ファイルを引き継ぐ）
+  const [scenario, setScenario] = useState<ProgrammingScenario>(() => restoreProgrammingProgress().scenario)
+  const [files, setFiles] = useState<Record<string, string>>(() => restoreProgrammingProgress().files)
   const [activeFile, setActiveFile] = useState('index.ts')
   // savedFiles はエクスポート後の状態を保持し、isDirty の基準となる
-  const [savedFiles, setSavedFiles] = useState<Record<string, string>>(scenario.files)
+  const [savedFiles, setSavedFiles] = useState<Record<string, string>>(() => restoreProgrammingProgress().files)
 
   const isDirty = JSON.stringify(files) !== JSON.stringify(savedFiles)
 
@@ -217,6 +264,21 @@ export default function ProgrammingPage() {
       window.removeEventListener('mouseup', handleMouseUp)
     }
   }, [])
+
+  // 入力が止まってから SAVE_DEBOUNCE_MS 後に保存する。
+  // ファイル編集は頻繁に発生するため、1文字ごとに同期書き込みしないための debounce。
+  const debouncedScenarioId = useDebounce(scenario.id, SAVE_DEBOUNCE_MS)
+  const debouncedFiles = useDebounce(files, SAVE_DEBOUNCE_MS)
+
+  useEffect(() => {
+    const progress: ProgProgress = {
+      version: 1,
+      scenarioId: debouncedScenarioId,
+      files: debouncedFiles,
+      updatedAt: new Date().toISOString(),
+    }
+    localStorage.setItem(LS_KEY, JSON.stringify(progress))
+  }, [debouncedScenarioId, debouncedFiles])
 
   const isBooting = status === 'booting'
   const isRunning = status === 'running'
@@ -358,7 +420,9 @@ export default function ProgrammingPage() {
           style={{ width: paneSizes.scenarioWidthPx }}
           className="flex-shrink-0 overflow-hidden border-l border-dark-border dark:border-dark-border light:border-light-border"
         >
+          {/* シナリオ変更時に ScenarioPanel を再マウントし、ヒント開示数・解答表示状態をリセットする */}
           <ScenarioPanel
+            key={scenario.id}
             title={scenario.title}
             description={scenario.description}
             hints={scenario.hints}
