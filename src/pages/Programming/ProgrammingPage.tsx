@@ -146,7 +146,7 @@ export default function ProgrammingPage() {
   // ロードしてしまうことを防ぐ。
   const [hasConsented, setHasConsented] = useState(false)
 
-  const { status, output, run, killProcess, clearOutput, readFileFromContainer } = useWebContainer(hasConsented)
+  const { status, output, run, killProcess, clearOutput, readFileFromContainer, serverUrl } = useWebContainer(hasConsented)
 
   // 前回の進捗を復元する（ページ再訪問時にシナリオ選択と編集ファイルを引き継ぐ）
   const [scenario, setScenario] = useState<ProgrammingScenario>(() => restoreProgrammingProgress().scenario)
@@ -549,7 +549,7 @@ export default function ProgrammingPage() {
           />
 
           <div style={{ height: paneSizes.consoleHeightPx }} className="flex-shrink-0">
-            <Console output={output} onClear={clearOutput} />
+            <Console output={output} onClear={clearOutput} serverUrl={serverUrl} />
           </div>
         </div>
 

@@ -998,10 +998,158 @@ for (const shape of shapes) {
   },
 }
 
+const scenario6: ProgrammingScenario = {
+  id: 'express-server',
+  title: 'Expressでシンプルなサーバーを作る',
+  description: `## Expressでシンプルなサーバーを作る
+
+Express を使って Node.js の HTTP サーバーを作り、
+下部の **プレビュータブ** でリアルタイムに動作確認しましょう。
+
+### 課題
+
+1. ルートパス（\`/\`）にアクセスするとスタイル付きの HTML ページを返す
+2. \`/hello/:name\` で「こんにちは、{name}さん！」を返す
+3. \`/api/users\` に JSON を返す REST エンドポイントを追加する
+4. すべてのリクエストをコンソールにログ出力するミドルウェアを追加する
+
+### ポイント
+
+- \`app.get(path, handler)\` でルートを定義する
+- \`res.send()\` は文字列や HTML、\`res.json()\` は JSON レスポンスを返す
+- \`req.params.name\` で URL パスパラメータを取得する
+- \`app.use()\` でミドルウェア（全ルートに適用される処理）を登録する
+- サーバーが起動するとコンソールに「プレビュータブで確認できます」と表示される
+- パネルの境界をドラッグしてプレビュー領域を大きくできます
+`,
+  files: {
+    'index.ts': `import express from 'express'
+
+const app = express()
+const PORT = 3000
+
+// TODO: 1. すべてのリクエストをログに出力するミドルウェアを追加してください
+// ヒント: app.use((req, res, next) => { ... next() })
+// req.method と req.url を console.log で出力します
+
+
+// TODO: 2. GET / にアクセスしたときにスタイル付きの HTML を返してください
+// res.send('<html>...') で HTML を返せます
+app.get('/', (req, res) => {
+  res.send(\`
+    <html>
+      <head>
+        <style>
+          body { font-family: sans-serif; padding: 2rem; background: #1e1e1e; color: #d4d4d4; }
+          h1   { color: #4ec9b0; }
+          a    { color: #569cd6; }
+        </style>
+      </head>
+      <body>
+        <h1>🚀 Browser Lab Express サーバー</h1>
+        <p>ルートが定義できたら、他のページも試してみましょう：</p>
+        <ul>
+          <li><a href="/hello/Taro">/hello/Taro</a></li>
+          <li><a href="/api/users">/api/users</a></li>
+        </ul>
+      </body>
+    </html>
+  \`)
+})
+
+// TODO: 3. GET /hello/:name に対して「こんにちは、{name}さん！」を返してください
+// req.params.name でパスパラメータを取得できます
+
+
+// TODO: 4. GET /api/users に JSON レスポンスを返してください
+// res.json() で JSON を返せます
+// ユーザーのリスト（id, name, role）を返しましょう
+
+
+app.listen(PORT, () => {
+  console.log(\`サーバー起動: http://localhost:\${PORT}\`)
+})
+`,
+    'package.json': JSON.stringify({
+      name: 'express-server',
+      version: '1.0.0',
+      type: 'module',
+      // バージョン固定の理由:
+      // 実行時最新版は不審な更新を引き込む可能性があるため、
+      // メジャーバージョンを固定して既知の安定シリーズのみを使う。
+      dependencies: {
+        tsx: '^4.0.0',
+        typescript: '^5.0.0',
+        express: '^4.18.0',
+        '@types/express': '^4.17.0',
+      },
+    }, null, 2),
+  },
+  hints: [
+    'ミドルウェアは `app.use((req, res, next) => { console.log(req.method, req.url); next() })` のように書きます。`next()` を呼ばないと次のハンドラに進めません',
+    '`app.get("/hello/:name", (req, res) => { const { name } = req.params; res.send(\`こんにちは、${name}さん！\`) })` でパスパラメータを使えます',
+    '`res.json()` の引数にオブジェクトや配列を渡すと JSON レスポンスになります。`Content-Type: application/json` も自動で付与されます',
+    'ミドルウェアはルートより前に `app.use()` で登録すると全リクエストに適用されます。順序が重要です',
+  ],
+  solution: {
+    'index.ts': `import express from 'express'
+
+const app = express()
+const PORT = 3000
+
+// すべてのリクエストをログに出力するミドルウェア
+app.use((req, res, next) => {
+  console.log(\`\${req.method} \${req.url}\`)
+  next()
+})
+
+app.get('/', (req, res) => {
+  res.send(\`
+    <html>
+      <head>
+        <style>
+          body { font-family: sans-serif; padding: 2rem; background: #1e1e1e; color: #d4d4d4; }
+          h1   { color: #4ec9b0; }
+          a    { color: #569cd6; }
+        </style>
+      </head>
+      <body>
+        <h1>🚀 Browser Lab Express サーバー</h1>
+        <p>ルートが定義できたら、他のページも試してみましょう：</p>
+        <ul>
+          <li><a href="/hello/Taro">/hello/Taro</a></li>
+          <li><a href="/api/users">/api/users</a></li>
+        </ul>
+      </body>
+    </html>
+  \`)
+})
+
+app.get('/hello/:name', (req, res) => {
+  const { name } = req.params
+  res.send(\`<h1 style="font-family:sans-serif;color:#4ec9b0;">こんにちは、\${name}さん！</h1>\`)
+})
+
+app.get('/api/users', (req, res) => {
+  res.json([
+    { id: 1, name: 'Alice', role: 'admin' },
+    { id: 2, name: 'Bob',   role: 'user' },
+    { id: 3, name: 'Carol', role: 'user' },
+  ])
+})
+
+app.listen(PORT, () => {
+  console.log(\`サーバー起動: http://localhost:\${PORT}\`)
+})
+`,
+  },
+}
+
 export const programmingScenarios: ProgrammingScenario[] = [
   scenario1,
   scenario2,
   scenario3,
   scenario4,
   scenario5,
+  scenario6,
 ]

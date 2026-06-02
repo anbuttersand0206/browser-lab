@@ -24,6 +24,11 @@ export function useWebContainer(isEnabled: boolean) {
   const [output, setOutput] = useState<string[]>([])
   const processRef = useRef<WebContainerProcess | null>(null)
 
+  // コンテナ内で起動したサーバーの URL。
+  // server-ready イベントで更新され、プレビュー iframe に渡す。
+  // null はサーバーが未起動または停止済みを意味する。
+  const [serverUrl, setServerUrl] = useState<string | null>(null)
+
   // ストリームから届く生のチャンクをコンソール行配列に変換して蓄積する。
   // 文字化けを防ぐため ANSI → CRLF → 単独 CR の順で正規化する。
   // この順序が重要: ANSI コード内に \r が埋め込まれることがあるため、
@@ -63,6 +68,15 @@ export function useWebContainer(isEnabled: boolean) {
           await wc.teardown()
           return
         }
+
+        // server-ready はコンテナ内で `app.listen()` 等が呼ばれたときに発火する。
+        // WebContainers がポートフォワードした URL を受け取り、
+        // プレビュー iframe に渡すために state に保存する。
+        wc.on('server-ready', (port, url) => {
+          appendOutput(`[サーバー] ポート ${port} で起動しました → プレビュータブで確認できます`)
+          setServerUrl(url)
+        })
+
         wcRef.current = wc
         setStatus('ready')
       } catch (e) {
@@ -86,6 +100,9 @@ export function useWebContainer(isEnabled: boolean) {
     // 前回の実行プロセスが残っている場合は二重起動を防ぐために先に停止する
     processRef.current?.kill()
     clearOutput()
+    // 新しい実行を始める前にサーバー URL をクリアする。
+    // 古い URL が残ったまま iframe が表示されるとユーザーが混乱するため。
+    setServerUrl(null)
     setStatus('running')
 
     try {
@@ -144,6 +161,8 @@ export function useWebContainer(isEnabled: boolean) {
         new WritableStream({ write: (chunk) => appendOutput(chunk) })
       )
       const exitCode = await proc.exit
+      // プロセス終了時（スクリプト完了またはサーバー停止）にサーバー URL をクリアする
+      setServerUrl(null)
       appendOutput(`\n[完了] プロセス終了 (exit ${exitCode})`)
     } catch (e) {
       appendOutput(`[Error] ${e}`)
@@ -174,5 +193,5 @@ export function useWebContainer(isEnabled: boolean) {
     }
   }
 
-  return { status, output, run, killProcess, clearOutput, readFileFromContainer }
+  return { status, output, run, killProcess, clearOutput, readFileFromContainer, serverUrl }
 }
