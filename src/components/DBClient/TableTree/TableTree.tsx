@@ -1,10 +1,25 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, Table2 } from 'lucide-react'
-import type { TableInfo } from '../../../hooks/usePGLite'
+import type { ColumnInfo, TableInfo } from '../../../hooks/usePGLite'
 
 interface TableTreeProps {
   tables: TableInfo[]
   onTableClick?: (tableName: string) => void
+}
+
+// カラム行のツールチップ文字列を組み立てる。
+// type・NOT NULL・DEFAULT を1行にまとめ、ツリーを展開しなくても定義が確認できる。
+function buildColumnTitle(col: ColumnInfo): string {
+  const parts: string[] = [col.type.toUpperCase()]
+  if (!col.nullable) parts.push('NOT NULL')
+  if (col.default !== null) parts.push(`DEFAULT ${col.default}`)
+  return `${col.name}: ${parts.join(' | ')}`
+}
+
+// テーブル行のツールチップ文字列を組み立てる。
+// 展開せずにすべてのカラム定義を確認できるようにする。
+function buildTableTitle(columns: ColumnInfo[]): string {
+  return columns.map(buildColumnTitle).join('\n')
 }
 
 export function TableTree({ tables, onTableClick }: TableTreeProps) {
@@ -37,6 +52,7 @@ export function TableTree({ tables, onTableClick }: TableTreeProps) {
           return (
             <div key={table.name}>
               <div
+                title={buildTableTitle(table.columns)}
                 className="flex cursor-pointer items-center gap-1.5 px-3 py-1 text-xs transition-colors hover:bg-dark-hover dark:hover:bg-dark-hover light:hover:bg-light-hover"
                 onClick={() => {
                   toggleTable(table.name)
@@ -60,6 +76,7 @@ export function TableTree({ tables, onTableClick }: TableTreeProps) {
                   {table.columns.map((col) => (
                     <div
                       key={col.name}
+                      title={buildColumnTitle(col)}
                       className="flex items-center gap-1.5 py-0.5 text-xs"
                     >
                       <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-400" />
@@ -71,6 +88,11 @@ export function TableTree({ tables, onTableClick }: TableTreeProps) {
                       </span>
                       {!col.nullable && (
                         <span className="text-xs text-red-400" title="NOT NULL">!</span>
+                      )}
+                      {col.default !== null && (
+                        // DEFAULT 値が設定されているカラムであることを示す。
+                        // 値の詳細はツールチップ（title 属性）に含めている。
+                        <span className="text-xs text-blue-400" title={`DEFAULT ${col.default}`}>D</span>
                       )}
                     </div>
                   ))}

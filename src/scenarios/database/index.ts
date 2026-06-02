@@ -366,8 +366,111 @@ ORDER BY 合計金額 DESC;
 `,
 }
 
+const scenario4: DatabaseScenario = {
+  id: 'transactions',
+  title: 'トランザクションとロールバック',
+  description: `## トランザクションとロールバック
+
+\`BEGIN\` / \`COMMIT\` / \`ROLLBACK\` を使い、複数の操作をひとつの単位として扱う方法を学びましょう。
+銀行振込のように「引き落としと入金は必ず両方成功する」ことを保証するのがトランザクションの役割です。
+
+### 課題
+
+銀行口座テーブルを使って、以下を実施してください：
+
+1. テーブルとデータを作成する
+2. \`BEGIN\` でトランザクションを開始し、送金処理を実行する（コミット）
+3. 残高不足を引き起こしてトランザクションをロールバックする
+4. \`SAVEPOINT\` で部分的なロールバックを試す
+
+### ポイント
+
+- トランザクション内の変更は \`COMMIT\` するまで他のセッションには見えない
+- エラー発生後に \`ROLLBACK\` すると、トランザクション開始前の状態に戻る
+- \`SAVEPOINT\` を使うと途中ポイントまで戻ることができる
+- PGLite はシングルセッションのため、上記の「他のセッション」という挙動の確認は省略します
+`,
+  initialSQL: `-- Step 1: テーブル作成とデータ挿入
+CREATE TABLE accounts (
+  id   SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  balance NUMERIC(12,2) NOT NULL CHECK (balance >= 0)
+);
+
+INSERT INTO accounts (name, balance) VALUES
+  ('Alice', 10000),
+  ('Bob',    5000);
+
+SELECT * FROM accounts;
+
+-- Step 2: 正常な送金（AliceからBobへ3000円）
+-- BEGIN;
+--   UPDATE accounts SET balance = balance - 3000 WHERE name = 'Alice';
+--   UPDATE accounts SET balance = balance + 3000 WHERE name = 'Bob';
+-- COMMIT;
+-- SELECT * FROM accounts;
+
+-- Step 3: 残高不足でロールバック
+-- BEGIN;
+--   UPDATE accounts SET balance = balance - 99999 WHERE name = 'Bob';
+--   -- CHECK制約違反が発生→ロールバック
+-- ROLLBACK;
+-- SELECT * FROM accounts;
+
+-- Step 4: SAVEPOINT
+-- BEGIN;
+--   UPDATE accounts SET balance = balance - 1000 WHERE name = 'Alice';
+--   SAVEPOINT before_bob;
+--   UPDATE accounts SET balance = balance - 99999 WHERE name = 'Bob'; -- これを取り消したい
+--   ROLLBACK TO SAVEPOINT before_bob;
+--   COMMIT;
+-- SELECT * FROM accounts;
+`,
+  hints: [
+    '`BEGIN;` でトランザクションを開始します。`COMMIT;` で確定、`ROLLBACK;` で取り消しです',
+    'コメントアウトされたブロックを1つずつ有効にして実行すると、トランザクションの動作を段階的に確認できます',
+    '`CHECK (balance >= 0)` 制約があるため、残高を負にする UPDATE は自動的にエラーになります',
+    '`SAVEPOINT 名前;` で途中ポイントを作成し、`ROLLBACK TO SAVEPOINT 名前;` でそこまで戻せます',
+    '`ROLLBACK TO SAVEPOINT` の後も `COMMIT;` または `ROLLBACK;` でトランザクションを終了する必要があります',
+  ],
+  solution: `-- セットアップ
+CREATE TABLE accounts (
+  id      SERIAL PRIMARY KEY,
+  name    VARCHAR(100) NOT NULL,
+  balance NUMERIC(12,2) NOT NULL CHECK (balance >= 0)
+);
+INSERT INTO accounts (name, balance) VALUES ('Alice', 10000), ('Bob', 5000);
+
+-- 正常な送金：AliceからBobへ3000円
+BEGIN;
+  UPDATE accounts SET balance = balance - 3000 WHERE name = 'Alice';
+  UPDATE accounts SET balance = balance + 3000 WHERE name = 'Bob';
+COMMIT;
+SELECT * FROM accounts;
+-- Alice: 7000 / Bob: 8000
+
+-- 残高不足によるロールバック
+BEGIN;
+  UPDATE accounts SET balance = balance - 99999 WHERE name = 'Bob';
+ROLLBACK;
+SELECT * FROM accounts;
+-- Bobの残高は変わらず 8000 のまま
+
+-- SAVEPOINTによる部分ロールバック
+BEGIN;
+  UPDATE accounts SET balance = balance - 1000 WHERE name = 'Alice';
+  SAVEPOINT before_bob;
+  UPDATE accounts SET balance = balance - 99999 WHERE name = 'Bob';  -- これだけ取り消す
+  ROLLBACK TO SAVEPOINT before_bob;
+COMMIT;
+SELECT * FROM accounts;
+-- Alice: 6000（-1000は確定）/ Bob: 8000（変わらず）
+`,
+}
+
 export const databaseScenarios: DatabaseScenario[] = [
   scenario1,
   scenario2,
   scenario3,
+  scenario4,
 ]

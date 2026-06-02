@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Copy, Check } from 'lucide-react'
 import type { QueryResult } from '../../../hooks/usePGLite'
+import { ExplainView, isExplainResult } from '../ExplainView/ExplainView'
 
 interface ResultGridProps {
   results: QueryResult[]
@@ -95,7 +96,14 @@ export function ResultGrid({ results }: ResultGridProps) {
         </div>
       )}
 
-      {!latest.error && latest.fields.length > 0 && (
+      {/* EXPLAIN / EXPLAIN ANALYZE の結果は専用ビューで色付き表示する */}
+      {isExplainResult(latest) && (
+        <div className="flex-1 overflow-hidden">
+          <ExplainView result={latest} />
+        </div>
+      )}
+
+      {!latest.error && latest.fields.length > 0 && !isExplainResult(latest) && (
         <div className="flex-1 overflow-auto">
           <table className="w-full border-collapse text-xs">
             <thead className="sticky top-0 bg-dark-sidebar dark:bg-dark-sidebar light:bg-light-sidebar">

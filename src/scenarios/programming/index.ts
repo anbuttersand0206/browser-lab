@@ -644,8 +644,179 @@ main().catch(console.error);
   },
 }
 
+const scenario4: ProgrammingScenario = {
+  id: 'array-methods',
+  title: '配列の高階関数をマスターする',
+  description: `## 配列の高階関数をマスターする
+
+\`map\`・\`filter\`・\`reduce\` などの高階関数を使いこなしましょう。
+命令型の for ループより宣言的に書け、処理の「意図」が読み手に伝わりやすくなります。
+
+### 課題
+
+商品リストを使って、以下の関数を実装してください：
+
+1. \`getNames\`: 商品名のみの配列を返す（\`map\`）
+2. \`filterByCategory\`: カテゴリ名でフィルタリングする（\`filter\`）
+3. \`totalPrice\`: 合計金額を計算する（\`reduce\`）
+4. \`cheapestInCategory\`: カテゴリ内の最安値商品を返す（\`filter\` + \`reduce\`）
+5. \`summarize\`: カテゴリごとの件数と合計金額をオブジェクトにまとめる（\`reduce\`）
+
+### ポイント
+
+- \`map\` は全要素を変換した新しい配列を返す（元の配列は変更しない）
+- \`filter\` は条件を満たす要素だけの新しい配列を返す
+- \`reduce\` は配列を1つの値（数値・オブジェクト・配列など）にたたみ込む
+- 関数を組み合わせることで複雑な処理を短く書ける
+`,
+  files: {
+    'index.ts': `// 配列の高階関数（map / filter / reduce）
+
+interface Product {
+  id: number
+  name: string
+  price: number
+  category: string
+}
+
+const products: Product[] = [
+  { id: 1, name: 'ノートPC',     price: 89800, category: 'electronics' },
+  { id: 2, name: 'マウス',       price:  3500, category: 'electronics' },
+  { id: 3, name: 'キーボード',   price: 12000, category: 'electronics' },
+  { id: 4, name: 'デスク',       price: 45000, category: 'furniture' },
+  { id: 5, name: 'チェア',       price: 38000, category: 'furniture' },
+  { id: 6, name: 'TypeScript本', price:  3200, category: 'books' },
+  { id: 7, name: 'SQL本',        price:  2800, category: 'books' },
+]
+
+// TODO: 商品名のみの配列を返す関数を実装してください
+function getNames(products: Product[]): string[] {
+  // ヒント: map を使います
+}
+
+// TODO: カテゴリ名でフィルタリングする関数を実装してください
+function filterByCategory(products: Product[], category: string): Product[] {
+  // ヒント: filter を使います
+}
+
+// TODO: 合計金額を計算する関数を実装してください
+function totalPrice(products: Product[]): number {
+  // ヒント: reduce を使います
+}
+
+// TODO: カテゴリ内の最安値商品を返す関数を実装してください
+// カテゴリが空の場合は undefined を返してください
+function cheapestInCategory(products: Product[], category: string): Product | undefined {
+  // ヒント: filter してから reduce で最小値を探します
+}
+
+// TODO: カテゴリごとの件数と合計金額をまとめる関数を実装してください
+// 戻り値の型: Record<string, { count: number; total: number }>
+function summarize(products: Product[]): Record<string, { count: number; total: number }> {
+  // ヒント: reduce の初期値を {} にして、カテゴリごとに集計します
+}
+
+// --- 動作確認 ---
+console.log('=== 商品名一覧 ===')
+// TODO: getNames を呼び出して結果を出力してください
+
+console.log('\\n=== electronics カテゴリ ===')
+// TODO: filterByCategory を呼び出して結果を出力してください
+
+console.log('\\n=== 合計金額 ===')
+// TODO: totalPrice を呼び出して結果を出力してください
+
+console.log('\\n=== furniture の最安値 ===')
+// TODO: cheapestInCategory を呼び出して結果を出力してください
+
+console.log('\\n=== カテゴリ別サマリー ===')
+// TODO: summarize を呼び出して結果を出力してください
+`,
+    'package.json': JSON.stringify({
+      name: 'array-methods',
+      version: '1.0.0',
+      type: 'module',
+      dependencies: { tsx: '^4.0.0', typescript: '^5.0.0' },
+    }, null, 2),
+  },
+  hints: [
+    '`products.map(p => p.name)` で name のみの配列を作れます',
+    '`products.filter(p => p.category === category)` でカテゴリ一致の要素を絞り込めます',
+    '`products.reduce((sum, p) => sum + p.price, 0)` で合計を計算できます。第2引数の `0` が初期値です',
+    '`cheapestInCategory` は `filter` で対象商品を絞り込んでから `reduce((min, p) => p.price < min.price ? p : min)` で最小値を探せます',
+    '`summarize` の reduce 初期値は `{} as Record<string, { count: number; total: number }>` にします。各カテゴリが未登録なら `{ count: 0, total: 0 }` で初期化してから加算します',
+  ],
+  solution: {
+    'index.ts': `// 配列の高階関数（map / filter / reduce）
+
+interface Product {
+  id: number
+  name: string
+  price: number
+  category: string
+}
+
+const products: Product[] = [
+  { id: 1, name: 'ノートPC',     price: 89800, category: 'electronics' },
+  { id: 2, name: 'マウス',       price:  3500, category: 'electronics' },
+  { id: 3, name: 'キーボード',   price: 12000, category: 'electronics' },
+  { id: 4, name: 'デスク',       price: 45000, category: 'furniture' },
+  { id: 5, name: 'チェア',       price: 38000, category: 'furniture' },
+  { id: 6, name: 'TypeScript本', price:  3200, category: 'books' },
+  { id: 7, name: 'SQL本',        price:  2800, category: 'books' },
+]
+
+function getNames(products: Product[]): string[] {
+  return products.map(p => p.name)
+}
+
+function filterByCategory(products: Product[], category: string): Product[] {
+  return products.filter(p => p.category === category)
+}
+
+function totalPrice(products: Product[]): number {
+  return products.reduce((sum, p) => sum + p.price, 0)
+}
+
+function cheapestInCategory(products: Product[], category: string): Product | undefined {
+  const inCategory = products.filter(p => p.category === category)
+  if (inCategory.length === 0) return undefined
+  return inCategory.reduce((min, p) => p.price < min.price ? p : min)
+}
+
+function summarize(products: Product[]): Record<string, { count: number; total: number }> {
+  return products.reduce<Record<string, { count: number; total: number }>>((acc, p) => {
+    const entry = acc[p.category] ?? { count: 0, total: 0 }
+    return { ...acc, [p.category]: { count: entry.count + 1, total: entry.total + p.price } }
+  }, {})
+}
+
+// --- 動作確認 ---
+console.log('=== 商品名一覧 ===')
+console.log(getNames(products))
+
+console.log('\\n=== electronics カテゴリ ===')
+filterByCategory(products, 'electronics').forEach(p => console.log(\`  \${p.name}: ¥\${p.price.toLocaleString()}\`))
+
+console.log('\\n=== 合計金額 ===')
+console.log(\`¥\${totalPrice(products).toLocaleString()}\`)
+
+console.log('\\n=== furniture の最安値 ===')
+const cheapest = cheapestInCategory(products, 'furniture')
+console.log(cheapest ? \`\${cheapest.name}: ¥\${cheapest.price.toLocaleString()}\` : 'なし')
+
+console.log('\\n=== カテゴリ別サマリー ===')
+const summary = summarize(products)
+Object.entries(summary).forEach(([cat, { count, total }]) =>
+  console.log(\`  \${cat}: \${count}件, 合計 ¥\${total.toLocaleString()}\`)
+)
+`,
+  },
+}
+
 export const programmingScenarios: ProgrammingScenario[] = [
   scenario1,
   scenario2,
   scenario3,
+  scenario4,
 ]

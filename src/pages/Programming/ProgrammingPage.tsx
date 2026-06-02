@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useNavigate } from 'react-router-dom'
-import { Zap, Sun, Moon, ArrowLeft, ChevronRight } from 'lucide-react'
+import { Zap, Sun, Moon, ArrowLeft, ChevronRight, HelpCircle } from 'lucide-react'
 import { useWebContainer, type ContainerStatus } from '../../hooks/useWebContainer'
 import { useUnsavedGuard } from '../../hooks/useUnsavedGuard'
 import { useJsonIO } from '../../hooks/useJsonIO'
@@ -12,6 +12,7 @@ import { ScenarioPanel } from '../../components/ScenarioPanel/ScenarioPanel'
 import { UnsavedModal } from '../../components/UnsavedModal/UnsavedModal'
 import { ResourceConsentModal, type ResourceSpec } from '../../components/ResourceConsentModal/ResourceConsentModal'
 import { Toolbar } from '../../components/Toolbar/Toolbar'
+import { HelpModal, EDITOR_COMMON_SHORTCUTS } from '../../components/HelpModal/HelpModal'
 import { programmingScenarios, type ProgrammingScenario } from '../../scenarios/programming'
 import { validateProgrammingExport, extractDatabaseSnapshot } from '../../lib/importValidator'
 
@@ -280,6 +281,8 @@ export default function ProgrammingPage() {
     localStorage.setItem(LS_KEY, JSON.stringify(progress))
   }, [debouncedScenarioId, debouncedFiles])
 
+  const [isHelpOpen, setIsHelpOpen] = useState(false)
+
   const isBooting = status === 'booting'
   const isRunning = status === 'running'
 
@@ -313,8 +316,15 @@ export default function ProgrammingPage() {
         </div>
 
         <button
-          onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+          onClick={() => setIsHelpOpen(true)}
+          title="キーボードショートカット一覧"
           className="ml-2 rounded px-2 py-0.5 text-xs text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
+        >
+          <HelpCircle size={14} />
+        </button>
+        <button
+          onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+          className="rounded px-2 py-0.5 text-xs text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
         >
           {resolvedTheme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
         </button>
@@ -436,6 +446,12 @@ export default function ProgrammingPage() {
         onSaveAndGo={confirmSaveAndGo}
         onDiscardAndGo={confirmDiscardAndGo}
         onCancel={cancelNavigation}
+      />
+
+      <HelpModal
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
+        groups={[EDITOR_COMMON_SHORTCUTS]}
       />
 
       {/* 同意前はコース全体を覆うモーダルを表示し、WebContainers の起動をブロックする */}
