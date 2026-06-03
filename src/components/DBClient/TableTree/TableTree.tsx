@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Table2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Table2, Network } from 'lucide-react'
 import type { ColumnInfo, TableInfo } from '../../../hooks/usePGLite'
 
 interface TableTreeProps {
   tables: TableInfo[]
   onTableClick?: (tableName: string) => void
+  // 指定されているときだけ ER 図ボタンを表示する。DB ページ専用の機能のため任意 prop にしている。
+  onShowSchema?: () => void
 }
 
 // カラム行のツールチップ文字列を組み立てる。
@@ -22,7 +24,7 @@ function buildTableTitle(columns: ColumnInfo[]): string {
   return columns.map(buildColumnTitle).join('\n')
 }
 
-export function TableTree({ tables, onTableClick }: TableTreeProps) {
+export function TableTree({ tables, onTableClick, onShowSchema }: TableTreeProps) {
   const [expandedTableNames, setExpandedTableNames] = useState<Set<string>>(new Set())
 
   const toggleTable = (name: string) => {
@@ -39,8 +41,21 @@ export function TableTree({ tables, onTableClick }: TableTreeProps) {
 
   return (
     <div className="select-none">
-      <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-        テーブル
+      <div className="flex items-center px-3 py-1.5">
+        <span className="text-xs font-semibold uppercase tracking-wider text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
+          テーブル
+        </span>
+        {onShowSchema && (
+          <button
+            type="button"
+            onClick={onShowSchema}
+            title="ER図（スキーマ可視化）を表示"
+            aria-label="ER図を表示"
+            className="ml-auto rounded p-0.5 text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
+          >
+            <Network size={12} />
+          </button>
+        )}
       </div>
       {tables.length === 0 ? (
         <div className="px-3 py-2 text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">

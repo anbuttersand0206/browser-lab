@@ -10,6 +10,7 @@ import { CodeEditor } from '../../components/Editor/CodeEditor'
 import { ResultGrid } from '../../components/DBClient/ResultGrid/ResultGrid'
 import { TableTree } from '../../components/DBClient/TableTree/TableTree'
 import { QueryHistory } from '../../components/DBClient/QueryHistory/QueryHistory'
+import { SchemaView } from '../../components/DBClient/SchemaView/SchemaView'
 import { ScenarioPanel } from '../../components/ScenarioPanel/ScenarioPanel'
 import { UnsavedModal } from '../../components/UnsavedModal/UnsavedModal'
 import { ResourceConsentModal, type ResourceSpec } from '../../components/ResourceConsentModal/ResourceConsentModal'
@@ -321,6 +322,7 @@ export default function DatabasePage() {
   const isExecuteDisabled = !ready || isExecuting
 
   const [isHelpOpen, setIsHelpOpen] = useState(false)
+  const [isSchemaViewOpen, setIsSchemaViewOpen] = useState(false)
 
   return (
     <div className="flex h-full flex-col bg-dark-bg dark:bg-dark-bg light:bg-light-bg">
@@ -389,7 +391,11 @@ export default function DatabasePage() {
           </div>
 
           <div className="flex-1 overflow-auto">
-            <TableTree tables={tables} onTableClick={handleTableClick} />
+            <TableTree
+              tables={tables}
+              onTableClick={handleTableClick}
+              onShowSchema={() => setIsSchemaViewOpen(true)}
+            />
             {/* 実行済みクエリを履歴として表示し、クリックでエディタに再読み込みできる */}
             <QueryHistory queries={queryHistory} onSelect={setSql} />
           </div>
@@ -496,6 +502,13 @@ export default function DatabasePage() {
         isOpen={isHelpOpen}
         onClose={() => setIsHelpOpen(false)}
         groups={[EDITOR_COMMON_SHORTCUTS, DB_SHORTCUTS]}
+      />
+
+      <SchemaView
+        tables={tables}
+        exec={exec}
+        isOpen={isSchemaViewOpen}
+        onClose={() => setIsSchemaViewOpen(false)}
       />
 
       {/* 同意前はコース全体を覆うモーダルを表示し、PGLite の起動をブロックする */}
