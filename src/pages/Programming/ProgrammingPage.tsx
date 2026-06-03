@@ -674,6 +674,7 @@ export default function ProgrammingPage() {
             description={scenario.description}
             hints={scenario.hints}
             solution={scenario.solution}
+            currentContent={files}
             onSolutionViewed={() => markCompleted('programming', scenario.id)}
           />
         </div>

@@ -1,27 +1,32 @@
 import { useState } from 'react'
+import { computeLineDiff, summarizeDiff, type DiffLine } from '../../lib/simpleDiff'
 
 interface ScenarioPanelProps {
   title: string
   description: string
   hints: string[]
   solution: string | Record<string, string>
+  // 現在のエディタ内容（差分表示に使用）。DB コースは文字列、プログラミングコースはファイル群。
+  currentContent?: string | Record<string, string>
   // 模範解答を確認表示したとき（confirming → visible の遷移）に呼ばれるコールバック。
   // シナリオ完了マークを付けるために親コンポーネントが使う。
   onSolutionViewed?: () => void
 }
 
-type PanelTab = 'problem' | 'hints' | 'solution'
+// 差分タブは currentContent が渡されているときのみ表示する
+type PanelTab = 'problem' | 'hints' | 'solution' | 'diff'
 
 // boolean フラグ 2 個では「confirming（確認中）」という第 3 状態が表現できないため union で定義する
 type SolutionState = 'hidden' | 'confirming' | 'visible'
 
-const PANEL_TABS: { id: PanelTab; label: string }[] = [
-  { id: 'problem', label: '問題文' },
-  { id: 'hints', label: 'ヒント' },
-  { id: 'solution', label: '解答例' },
-]
-
-export function ScenarioPanel({ title, description, hints, solution, onSolutionViewed }: ScenarioPanelProps) {
+export function ScenarioPanel({
+  title,
+  description,
+  hints,
+  solution,
+  currentContent,
+  onSolutionViewed,
+}: ScenarioPanelProps) {
   const [activeTab, setActiveTab] = useState<PanelTab>('problem')
   const [solutionState, setSolutionState] = useState<SolutionState>('hidden')
 
@@ -30,9 +35,19 @@ export function ScenarioPanel({ title, description, hints, solution, onSolutionV
   // 学習者が自力で考える時間を確保する。
   const [visibleHintCount, setVisibleHintCount] = useState(0)
 
+  const hasDiffTab = currentContent !== undefined
+
+  const PANEL_TABS: { id: PanelTab; label: string }[] = [
+    { id: 'problem', label: '問題文' },
+    { id: 'hints', label: 'ヒント' },
+    { id: 'solution', label: '解答例' },
+    ...(hasDiffTab ? [{ id: 'diff' as PanelTab, label: '差分' }] : []),
+  ]
+
   const hasMoreHints = visibleHintCount < hints.length
   const allHintsRevealed = visibleHintCount >= hints.length && hints.length > 0
 
+  // 解答テキスト（ファイル群の場合はファイル名ヘッダー付きで結合する）
   const solutionText =
     typeof solution === 'string'
       ? solution
@@ -186,10 +201,212 @@ export function ScenarioPanel({ title, description, hints, solution, onSolutionV
             )}
           </div>
         )}
+
+        {activeTab === 'diff' && hasDiffTab && (
+          <DiffTab currentContent={currentContent!} solution={solution} />
+        )}
       </div>
     </div>
   )
 }
+
+// ----------------------------------------------------------------
+// 差分タブのコンテンツ
+// currentContent と solution を比較して unified diff 形式で表示する
+// ----------------------------------------------------------------
+
+interface DiffTabProps {
+  currentContent: string | Record<string, string>
+  solution: string | Record<string, string>
+}
+
+function DiffTab({ currentContent, solution }: DiffTabProps) {
+  // 両方が string の場合はそのまま比較する（DBコース）
+  if (typeof currentContent === 'string' && typeof solution === 'string') {
+    return (
+      <SingleFileDiff
+        label="エディタの内容 vs 解答"
+        current={currentContent}
+        expected={solution}
+      />
+    )
+  }
+
+  // 両方が Record の場合はファイルごとに比較する（プログラミングコース）
+  if (typeof currentContent === 'object' && typeof solution === 'object') {
+    const solutionFiles = Object.entries(solution)
+    return (
+      <div className="space-y-4">
+        {solutionFiles.map(([filename, expectedCode]) => (
+          <SingleFileDiff
+            key={filename}
+            label={filename}
+            current={currentContent[filename] ?? ''}
+            expected={expectedCode}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  // 型の組み合わせが合わない場合（通常は発生しないが型安全のため）
+  return (
+    <p className="text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
+      差分を計算できませんでした。
+    </p>
+  )
+}
+
+// ----------------------------------------------------------------
+// 単一ファイルの差分表示
+// ----------------------------------------------------------------
+
+interface SingleFileDiffProps {
+  label: string
+  current: string
+  expected: string
+}
+
+function SingleFileDiff({ label, current, expected }: SingleFileDiffProps) {
+  const diffLines = computeLineDiff(current, expected)
+
+  // ファイルが長すぎて LCS 計算をスキップした場合
+  if (diffLines === null) {
+    return (
+      <div className="rounded-md border border-dark-border p-3">
+        <div className="mb-2 text-xs font-semibold text-dark-textDim">{label}</div>
+        <p className="text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
+          ファイルが長すぎるため差分を計算できません。
+        </p>
+      </div>
+    )
+  }
+
+  const { added, removed, equal } = summarizeDiff(diffLines)
+  const hasChanges = added > 0 || removed > 0
+
+  return (
+    <div className="rounded-md border border-dark-border dark:border-dark-border light:border-light-border">
+      {/* ファイルヘッダー：差分の概要を一行で示す */}
+      <div className="flex items-center gap-3 border-b border-dark-border px-3 py-2 dark:border-dark-border light:border-light-border">
+        <span className="text-xs font-semibold text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
+          {label}
+        </span>
+        <div className="ml-auto flex gap-2 text-xs">
+          {hasChanges ? (
+            <>
+              {removed > 0 && (
+                <span className="text-red-400">−{removed}行</span>
+              )}
+              {added > 0 && (
+                <span className="text-green-400">+{added}行</span>
+              )}
+              <span className="text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
+                ({equal}行一致)
+              </span>
+            </>
+          ) : (
+            <span className="text-green-400">解答と一致 ✓</span>
+          )}
+        </div>
+      </div>
+
+      {hasChanges ? (
+        // 差分がある場合: unified diff 形式で表示する
+        // 変更のない行は連続して省略して変更行周辺だけを見せる
+        <DiffLines lines={diffLines} />
+      ) : (
+        <div className="px-3 py-4 text-center text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
+          このファイルは解答と完全に一致しています。
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ----------------------------------------------------------------
+// 差分行のレンダリング（変更のない行を周辺数行のみ表示）
+// ----------------------------------------------------------------
+
+// 変更行の前後何行を context として表示するか
+const CONTEXT_LINES = 3
+
+interface DiffLinesProps {
+  lines: DiffLine[]
+}
+
+function DiffLines({ lines }: DiffLinesProps) {
+  // 変更のある行（added / removed）のインデックスセット
+  const changedIndices = new Set(
+    lines.flatMap((line, i) => (line.kind !== 'equal' ? [i] : []))
+  )
+
+  // 表示対象インデックス: 変更行 ± CONTEXT_LINES の範囲
+  const visibleIndices = new Set<number>()
+  for (const idx of changedIndices) {
+    for (let d = -CONTEXT_LINES; d <= CONTEXT_LINES; d++) {
+      const target = idx + d
+      if (target >= 0 && target < lines.length) {
+        visibleIndices.add(target)
+      }
+    }
+  }
+
+  const elements: React.ReactNode[] = []
+  let prevIdx = -1
+
+  for (let i = 0; i < lines.length; i++) {
+    if (!visibleIndices.has(i)) continue
+
+    // 省略された行がある場合に区切り線を表示する
+    if (prevIdx !== -1 && i > prevIdx + 1) {
+      elements.push(
+        <div key={`gap-${i}`} className="border-y border-dark-border/50 px-3 py-0.5 text-xs text-dark-textDim dark:border-dark-border/50 light:border-light-border">
+          ···
+        </div>
+      )
+    }
+
+    elements.push(<DiffLineRow key={i} line={lines[i]} />)
+    prevIdx = i
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <pre className="font-mono text-xs leading-5">{elements}</pre>
+    </div>
+  )
+}
+
+function DiffLineRow({ line }: { line: DiffLine }) {
+  const { kind, text, lineNo } = line
+
+  // 行の色・プレフィックスを kind に応じて決定する
+  const rowClass =
+    kind === 'added'
+      ? 'bg-green-500/10 text-green-400'
+      : kind === 'removed'
+      ? 'bg-red-500/10 text-red-400'
+      : 'text-dark-textDim dark:text-dark-textDim light:text-light-textDim'
+
+  const prefix =
+    kind === 'added' ? '+' : kind === 'removed' ? '-' : ' '
+
+  return (
+    <div className={`flex items-start gap-0 px-3 py-0 ${rowClass}`}>
+      {/* 行番号（等幅で揃える） */}
+      <span className="mr-2 w-7 flex-shrink-0 select-none text-right opacity-50">
+        {kind !== 'added' ? lineNo : ''}
+      </span>
+      <span className="mr-2 w-3 flex-shrink-0 select-none opacity-70">{prefix}</span>
+      <span className="whitespace-pre">{text}</span>
+    </div>
+  )
+}
+
+// ----------------------------------------------------------------
+// マークダウンレンダラー（変更なし）
+// ----------------------------------------------------------------
 
 // マークダウンのインラインコード（`backtick`）を <code> タグに変換する
 function renderInlineCode(text: string): React.ReactNode {

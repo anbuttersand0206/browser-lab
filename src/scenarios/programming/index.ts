@@ -1145,6 +1145,441 @@ app.listen(PORT, () => {
   },
 }
 
+const scenario7: ProgrammingScenario = {
+  id: 'generics',
+  title: 'Genericsで型安全な汎用コードを書く',
+  description: `## Genericsで型安全な汎用コードを書く
+
+**Generics（型パラメータ）** を使うと、具体的な型を固定せずに型安全な汎用コードを書けます。
+\`any\` で型安全性を捨てるのではなく、\`<T>\` で「後から型を決める」のが Generics の本質です。
+
+### 課題
+
+以下を実装してください：
+
+1. **identity関数**: 受け取った値をそのまま返す（最もシンプルな Generics）
+2. **Stack<T>クラス**: push / pop / peek を持つ型安全なスタック
+3. **pick関数**: オブジェクトから指定キーのみを抽出する（\`keyof\` と組み合わせ）
+4. **Result<T, E>型**: 成功か失敗かを型で表現する union 型（不正状態を型で排除）
+5. **zip関数**: 2つの配列を組み合わせて \`[A, B][]\` を返す
+
+### ポイント
+
+- \`<T>\` は「この関数を呼ぶ時点で型を決める」というプレースホルダー
+- \`K extends keyof T\` で「T のキーでなければならない」という制約を付ける
+- \`Result<T, E>\` のような union 型は「不正な状態を型レベルで排除」する設計
+- 戻り値の型は推論に任せられることが多い（型注釈を省いても型安全）
+`,
+  files: {
+    'index.ts': `// Generics（型パラメータ）の基本
+
+// TODO: 1. identity 関数を実装してください
+// 任意の型 T を受け取り、そのまま返す関数
+// function identity<T>(value: T): T { ... }
+
+
+// TODO: 2. Stack<T> クラスを実装してください
+// メソッド: push(item: T): void
+//          pop(): T | undefined  （空の場合は undefined）
+//          peek(): T | undefined （取り出さずに先頭を見る）
+//          get size(): number
+// class Stack<T> { ... }
+
+
+// TODO: 3. pick 関数を実装してください
+// オブジェクト obj から keys に含まれるキーのみを持つ新しいオブジェクトを返す
+// 型制約: K extends keyof T
+// function pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> { ... }
+
+
+// TODO: 4. Result<T, E> 型を定義してください
+// 成功: { ok: true; value: T }
+// 失敗: { ok: false; error: E }
+// この型を使って divide 関数（ゼロ除算を Result で返す）も実装してください
+// type Result<T, E = Error> = ...
+
+
+// TODO: 5. zip 関数を実装してください
+// 2つの配列を組み合わせて [A, B][] を返す
+// 長さが異なる場合は短い方に合わせる
+// function zip<A, B>(a: A[], b: B[]): [A, B][] { ... }
+
+
+// --- 動作確認 ---
+console.log('=== identity ===')
+// TODO: identity を文字列・数値・オブジェクトで呼び出して確認してください
+
+console.log('\\n=== Stack<number> ===')
+// TODO: Stack を作成し、push/pop/peek を確認してください
+
+console.log('\\n=== pick ===')
+const user = { id: 1, name: 'Alice', email: 'alice@example.com', age: 25 }
+// TODO: pick(user, ['id', 'name']) を呼び出して確認してください
+
+console.log('\\n=== Result ===')
+// TODO: divide(10, 2) と divide(10, 0) の結果を確認してください
+
+console.log('\\n=== zip ===')
+// TODO: zip([1, 2, 3], ['a', 'b', 'c']) を呼び出して確認してください
+`,
+    'package.json': JSON.stringify({
+      name: 'generics',
+      version: '1.0.0',
+      type: 'module',
+      dependencies: { tsx: '^4.0.0', typescript: '^5.0.0' },
+    }, null, 2),
+  },
+  hints: [
+    '`function identity<T>(value: T): T { return value }` — T は呼び出し時の型から推論されます',
+    'Stack は `private readonly items: T[] = []` をフィールドに持ち、push は `items.push(item)`、pop は `items.pop()` で実装します',
+    '`pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K>` の実装は `Object.fromEntries(keys.map(k => [k, obj[k]]))` で作れますが、型アサーションが必要です',
+    'Result 型: `type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E }` — divide は `if (b === 0) return { ok: false, error: new Error(...) }` で返します',
+    'zip は `Array.from({ length: Math.min(a.length, b.length) }, (_, i) => [a[i], b[i]] as [A, B])` で実装できます',
+  ],
+  solution: {
+    'index.ts': `// Generics（型パラメータ）の基本
+
+// 1. identity 関数
+function identity<T>(value: T): T {
+  return value
+}
+
+// 2. Stack<T> クラス
+class Stack<T> {
+  private readonly items: T[] = []
+
+  push(item: T): void {
+    this.items.push(item)
+  }
+
+  pop(): T | undefined {
+    return this.items.pop()
+  }
+
+  peek(): T | undefined {
+    return this.items[this.items.length - 1]
+  }
+
+  get size(): number {
+    return this.items.length
+  }
+}
+
+// 3. pick 関数
+function pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
+  return Object.fromEntries(keys.map((k) => [k, obj[k]])) as Pick<T, K>
+}
+
+// 4. Result<T, E> 型
+type Result<T, E = Error> =
+  | { ok: true; value: T }
+  | { ok: false; error: E }
+
+function divide(a: number, b: number): Result<number> {
+  // ゼロ除算は数学的に未定義のため Error を返す
+  if (b === 0) return { ok: false, error: new Error('ゼロ除算は許可されていません') }
+  return { ok: true, value: a / b }
+}
+
+// 5. zip 関数
+function zip<A, B>(a: A[], b: B[]): [A, B][] {
+  const length = Math.min(a.length, b.length)
+  return Array.from({ length }, (_, i) => [a[i], b[i]])
+}
+
+// --- 動作確認 ---
+console.log('=== identity ===')
+console.log(identity('hello'))    // string
+console.log(identity(42))         // number
+console.log(identity({ x: 1 }))  // object
+
+console.log('\\n=== Stack<number> ===')
+const stack = new Stack<number>()
+stack.push(1)
+stack.push(2)
+stack.push(3)
+console.log('size:', stack.size)
+console.log('peek:', stack.peek())
+console.log('pop:', stack.pop())
+console.log('size after pop:', stack.size)
+
+console.log('\\n=== pick ===')
+const user = { id: 1, name: 'Alice', email: 'alice@example.com', age: 25 }
+console.log(pick(user, ['id', 'name']))        // { id: 1, name: 'Alice' }
+console.log(pick(user, ['email', 'age']))      // { email: '...', age: 25 }
+
+console.log('\\n=== Result ===')
+const r1 = divide(10, 2)
+if (r1.ok) console.log('10 / 2 =', r1.value)
+
+const r2 = divide(10, 0)
+if (!r2.ok) console.log('エラー:', r2.error.message)
+
+console.log('\\n=== zip ===')
+const pairs = zip([1, 2, 3], ['a', 'b', 'c'])
+console.log(pairs)
+console.log(zip([1, 2], ['x', 'y', 'z']))  // 短い方に合わせる
+`,
+  },
+}
+
+const scenario8: ProgrammingScenario = {
+  id: 'type-guards',
+  title: '型ガードで安全に型を絞り込む',
+  description: `## 型ガードで安全に型を絞り込む
+
+TypeScript の union 型 (\`A | B\`) は、実行時にどちらの型かを確認してから安全に使う必要があります。
+**型ガード** はその確認ロジックを型システムに伝える仕組みです。
+
+### 型ガードの 3 つのパターン
+
+1. **typeof ガード**: \`typeof x === 'string'\`
+2. **instanceof ガード**: \`x instanceof MyClass\`
+3. **ユーザー定義型ガード**: \`function isXxx(x: unknown): x is Xxx\`
+
+### 課題
+
+以下を実装してください：
+
+1. **typeof ガード**: \`string | number | boolean\` を受け取り、型ごとに処理を分岐する
+2. **instanceof ガード**: カスタムエラークラスを判定して適切なメッセージを返す
+3. **ユーザー定義型ガード**: API レスポンス（\`unknown\`）を型安全に検証する
+4. **判別可能 union**: \`kind\` フィールドで絞り込む discriminated union の面積計算
+
+### ポイント
+
+- \`x is T\` を戻り値型に書くと、TypeScript が if ブロック内で T として扱う
+- \`unknown\` 型は \`any\` より安全で、型ガードなしでは中身を操作できない
+- discriminated union の \`kind\` プロパティは、コンパイラが網羅性をチェックできる
+`,
+  files: {
+    'index.ts': `// 型ガード（type predicates）
+
+// ===== 1. typeof ガード =====
+
+// TODO: printValue 関数を実装してください
+// 引数 value: string | number | boolean
+// string → "文字列: (値)"
+// number → "数値: (値)" （小数点第2位まで表示）
+// boolean → "真偽値: (はい/いいえ)"
+function printValue(value: string | number | boolean): void {
+  // ヒント: typeof value === 'string' などで分岐
+}
+
+// ===== 2. instanceof ガード =====
+
+class NetworkError extends Error {
+  constructor(
+    message: string,
+    public readonly statusCode: number
+  ) {
+    super(message)
+    this.name = 'NetworkError'
+  }
+}
+
+class ValidationError extends Error {
+  constructor(
+    message: string,
+    public readonly field: string
+  ) {
+    super(message)
+    this.name = 'ValidationError'
+  }
+}
+
+// TODO: handleError 関数を実装してください
+// NetworkError → "ネットワークエラー (statusCode): message"
+// ValidationError → "バリデーションエラー (field): message"
+// その他の Error → "エラー: message"
+function handleError(error: Error): string {
+  // ヒント: instanceof で分岐
+}
+
+// ===== 3. ユーザー定義型ガード =====
+
+interface ApiUser {
+  id: number
+  name: string
+  email: string
+}
+
+// TODO: isApiUser 型ガード関数を実装してください
+// 戻り値型: value is ApiUser
+// id が number、name と email が string であることを確認する
+function isApiUser(value: unknown): value is ApiUser {
+  // ヒント: typeof value === 'object' && value !== null &&
+  //        'id' in value && typeof (value as any).id === 'number' ...
+}
+
+// TODO: parseApiResponse 関数を実装してください
+// JSON文字列を受け取り、ApiUser であれば返す。
+// そうでない場合は Error を throw する。
+function parseApiResponse(json: string): ApiUser {
+  // ヒント: JSON.parse → isApiUser で検証
+}
+
+// ===== 4. 判別可能 union =====
+
+// TODO: Shape 型と area 関数を実装してください
+// Shape は kind フィールドで判別する discriminated union
+// circle: { kind: 'circle'; radius: number }
+// rectangle: { kind: 'rectangle'; width: number; height: number }
+// triangle: { kind: 'triangle'; base: number; height: number }
+type Shape = never  // ← ここを置き換えてください
+
+function area(shape: Shape): number {
+  // ヒント: switch (shape.kind) で分岐
+  // TypeScript は全ケースをカバーしていないと警告する
+  throw new Error('未実装')
+}
+
+// --- 動作確認 ---
+console.log('=== typeof ガード ===')
+// TODO: printValue を様々な型で呼び出して確認してください
+
+console.log('\\n=== instanceof ガード ===')
+// TODO: handleError を各エラータイプで呼び出して確認してください
+
+console.log('\\n=== ユーザー定義型ガード ===')
+// TODO: parseApiResponse で正常・異常なJSONを試してください
+
+console.log('\\n=== 判別可能 union ===')
+// TODO: 各図形の面積を計算して確認してください
+`,
+    'package.json': JSON.stringify({
+      name: 'type-guards',
+      version: '1.0.0',
+      type: 'module',
+      dependencies: { tsx: '^4.0.0', typescript: '^5.0.0' },
+    }, null, 2),
+  },
+  hints: [
+    '`typeof value === \'string\'` などで分岐します。number の表示は `value.toFixed(2)` が使えます',
+    '`instanceof` は `error instanceof NetworkError` のように使います。サブクラスを先に判定してください',
+    '型ガード関数: `function isApiUser(v: unknown): v is ApiUser { return typeof v === \'object\' && v !== null && \'id\' in v && typeof (v as Record<string,unknown>).id === \'number\' && ... }`',
+    '`parseApiResponse`: `const data: unknown = JSON.parse(json); if (!isApiUser(data)) throw new Error(...); return data;`',
+    '`switch (shape.kind) { case \'circle\': return Math.PI * shape.radius ** 2; ... }` — TypeScript はカバーされていないケースを `never` で検知します',
+  ],
+  solution: {
+    'index.ts': `// 型ガード（type predicates）
+
+// 1. typeof ガード
+function printValue(value: string | number | boolean): void {
+  if (typeof value === 'string') {
+    console.log(\`文字列: \${value}\`)
+  } else if (typeof value === 'number') {
+    console.log(\`数値: \${value.toFixed(2)}\`)
+  } else {
+    // boolean の網羅性はコンパイラが保証するため else で安全に扱える
+    console.log(\`真偽値: \${value ? 'はい' : 'いいえ'}\`)
+  }
+}
+
+// 2. instanceof ガード
+class NetworkError extends Error {
+  constructor(message: string, public readonly statusCode: number) {
+    super(message)
+    this.name = 'NetworkError'
+  }
+}
+
+class ValidationError extends Error {
+  constructor(message: string, public readonly field: string) {
+    super(message)
+    this.name = 'ValidationError'
+  }
+}
+
+function handleError(error: Error): string {
+  // サブクラスを先に判定しないと親クラスの Error に吸収されてしまう
+  if (error instanceof NetworkError) {
+    return \`ネットワークエラー (\${error.statusCode}): \${error.message}\`
+  }
+  if (error instanceof ValidationError) {
+    return \`バリデーションエラー (\${error.field}): \${error.message}\`
+  }
+  return \`エラー: \${error.message}\`
+}
+
+// 3. ユーザー定義型ガード
+interface ApiUser {
+  id: number
+  name: string
+  email: string
+}
+
+function isApiUser(value: unknown): value is ApiUser {
+  if (typeof value !== 'object' || value === null) return false
+  const v = value as Record<string, unknown>
+  return (
+    typeof v.id === 'number' &&
+    typeof v.name === 'string' &&
+    typeof v.email === 'string'
+  )
+}
+
+function parseApiResponse(json: string): ApiUser {
+  const data: unknown = JSON.parse(json)
+  if (!isApiUser(data)) {
+    throw new Error('APIレスポンスの形式が正しくありません')
+  }
+  return data
+}
+
+// 4. 判別可能 union
+type Shape =
+  | { kind: 'circle'; radius: number }
+  | { kind: 'rectangle'; width: number; height: number }
+  | { kind: 'triangle'; base: number; height: number }
+
+function area(shape: Shape): number {
+  switch (shape.kind) {
+    case 'circle':
+      return Math.PI * shape.radius ** 2
+    case 'rectangle':
+      return shape.width * shape.height
+    case 'triangle':
+      return (shape.base * shape.height) / 2
+    // default 不要: 全ケースを網羅していることを TypeScript が検査する
+  }
+}
+
+// --- 動作確認 ---
+console.log('=== typeof ガード ===')
+printValue('Hello, TypeScript!')
+printValue(3.14159)
+printValue(true)
+
+console.log('\\n=== instanceof ガード ===')
+console.log(handleError(new NetworkError('タイムアウト', 408)))
+console.log(handleError(new ValidationError('メールアドレスが無効', 'email')))
+console.log(handleError(new Error('予期しないエラー')))
+
+console.log('\\n=== ユーザー定義型ガード ===')
+const validJson = '{"id":1,"name":"Alice","email":"alice@example.com"}'
+const user = parseApiResponse(validJson)
+console.log('パース成功:', user)
+
+try {
+  parseApiResponse('{"id":"文字列ID","name":"Bob"}')  // id が string なので失敗
+} catch (e) {
+  console.log('パース失敗:', (e as Error).message)
+}
+
+console.log('\\n=== 判別可能 union ===')
+const shapes: Shape[] = [
+  { kind: 'circle', radius: 5 },
+  { kind: 'rectangle', width: 4, height: 6 },
+  { kind: 'triangle', base: 3, height: 8 },
+]
+shapes.forEach((s) => {
+  console.log(\`\${s.kind}: 面積 = \${area(s).toFixed(2)}\`)
+})
+`,
+  },
+}
+
 export const programmingScenarios: ProgrammingScenario[] = [
   scenario1,
   scenario2,
@@ -1152,4 +1587,6 @@ export const programmingScenarios: ProgrammingScenario[] = [
   scenario4,
   scenario5,
   scenario6,
+  scenario7,
+  scenario8,
 ]

@@ -603,6 +603,7 @@ export default function DatabasePage() {
             description={scenario.description}
             hints={scenario.hints}
             solution={scenario.solution}
+            currentContent={sql}
             onSolutionViewed={() => markCompleted('database', scenario.id)}
           />
         </div>
