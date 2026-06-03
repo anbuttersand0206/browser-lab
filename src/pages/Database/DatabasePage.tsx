@@ -20,6 +20,7 @@ import { useCompletedScenarios } from '../../hooks/useCompletedScenarios'
 import { databaseScenarios, type DatabaseScenario } from '../../scenarios/database'
 import { validateDatabaseExport, extractDatabaseSnapshot } from '../../lib/importValidator'
 import { formatSql } from '../../lib/sqlFormatter'
+import { judgeDbOutput } from '../../lib/clearJudge'
 
 // リサイズ可能な3ペインのサイズをまとめて管理する
 interface PaneSizes {
@@ -272,10 +273,22 @@ export default function DatabasePage() {
       setSql(nextSql)
       setSavedSql(nextSql)
       setLatestResult([])
+      // シナリオが変わったら前のクリア通知を隠す
+      setShowClearNotification(false)
       // URLを更新してシナリオへの直接リンクを可能にする
       navigate(`/database/${nextScenario.id}`)
     }, `シナリオ「${nextScenario.title}」に移動`)
   }
+
+  // クリア通知の表示フラグ（採点合格時に true になり、タイマーで自動的に消える）
+  const [showClearNotification, setShowClearNotification] = useState(false)
+
+  // 採点トリガー用カウンター。実行が完了するたびにインクリメントされる。
+  // executeSql の useCallback deps に markCompleted/isCompleted を含めずに済む設計:
+  // 採点判定は executeSql の外の useEffect に分離し、このカウンターで起動する。
+  const [execCount, setExecCount] = useState(0)
+  // 採点対象の最新実行結果を ref で保持する（useEffect の deps から外すため）
+  const lastResultsRef = useRef<QueryResult[]>([])
 
   // セミコロン区切りで複数ステートメントを順次実行し、最後の結果をグリッドに表示する。
   // PGLite は1クエリずつしか受け付けないため分割して逐次実行する。
@@ -298,6 +311,10 @@ export default function DatabasePage() {
       setLatestResult([lastResult])
       setQueryHistory((prev) => [...prev, ...newResults])
       await refreshTables()
+
+      // 採点のために結果を保存し、判定 effect をトリガーする
+      lastResultsRef.current = newResults
+      setExecCount((c) => c + 1)
     } finally {
       setIsExecuting(false)
     }
@@ -401,9 +418,30 @@ export default function DatabasePage() {
 
   const isExecuteDisabled = !ready || isExecuting
 
+  const { markCompleted, isCompleted } = useCompletedScenarios()
+
+  // 実行完了のたびにクリア採点を行う。
+  // execCount が変化するのは executeSql 完了後のみのため、採点は必要なときだけ走る。
+  useEffect(() => {
+    // 初回マウント時（execCount === 0）と clearCriteria が未定義のシナリオはスキップ
+    if (execCount === 0 || !scenario.clearCriteria) return
+    const passed = judgeDbOutput(lastResultsRef.current, scenario.clearCriteria)
+    if (passed && !isCompleted('database', scenario.id)) {
+      markCompleted('database', scenario.id)
+      setShowClearNotification(true)
+    }
+  }, [execCount, scenario, isCompleted, markCompleted])
+
+  // クリア通知を一定時間後に自動消去する。
+  // 通知は採点成功時のみ出るため、timer が動くのは短い間だけ。
+  useEffect(() => {
+    if (!showClearNotification) return
+    const timerId = setTimeout(() => setShowClearNotification(false), 4000)
+    return () => clearTimeout(timerId)
+  }, [showClearNotification])
+
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [isSchemaViewOpen, setIsSchemaViewOpen] = useState(false)
-  const { markCompleted, isCompleted } = useCompletedScenarios()
 
   // シナリオの初期 SQL にリセットする。
   // 誤操作防止のため window.confirm で確認を取ってから実行する。
@@ -638,6 +676,20 @@ export default function DatabasePage() {
           onAccept={() => setHasConsented(true)}
           onCancel={() => navigate('/')}
         />
+      )}
+
+      {/* クリア通知バナー（採点合格時に表示し、4秒後に自動消去） */}
+      {showClearNotification && (
+        <button
+          type="button"
+          onClick={() => setShowClearNotification(false)}
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-lg border border-green-500/50 bg-green-500/15 px-4 py-3 text-sm font-medium text-green-400 shadow-lg transition-colors hover:bg-green-500/25"
+          aria-live="polite"
+          aria-label="シナリオクリア通知（クリックで閉じる）"
+        >
+          <CheckCircle2 size={16} />
+          シナリオクリア！お疲れ様でした 🎉
+        </button>
       )}
     </div>
   )

@@ -1,3 +1,5 @@
+import type { DbClearCriteria } from '../../lib/clearJudge'
+
 export interface DatabaseScenario {
   id: string
   title: string
@@ -5,7 +7,11 @@ export interface DatabaseScenario {
   initialSQL: string
   hints: string[]
   solution: string
+  // 自動採点の判定条件。未定義のシナリオはクリア判定を行わない。
+  clearCriteria?: DbClearCriteria
 }
+
+export type { DbClearCriteria }
 
 const scenario1: DatabaseScenario = {
   id: 'basic-crud',
@@ -58,6 +64,8 @@ SELECT * FROM users;
     '`DEFAULT CURRENT_TIMESTAMP` でデフォルト値を現在時刻にできます',
     'INSERTは `INSERT INTO users (name, email, age) VALUES (\'Alice\', \'alice@example.com\', 25)` です',
   ],
+  // 3人以上挿入して SELECT できていればクリア（Alice・Bob・Charlie 全員の名前が見えること）
+  clearCriteria: { minRowCount: 3, requiredCellValues: ['Alice', 'Bob'] },
   solution: `-- 1. テーブル作成
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
@@ -160,6 +168,8 @@ EXPLAIN ANALYZE SELECT * FROM products WHERE category = 'electronics';
     '`actual time=` で実際の実行時間（ミリ秒）を確認できます',
     'データ量が少ないとインデックスが使われないことがあります（10,000件以上推奨）',
   ],
+  // EXPLAIN 結果に "Index Scan" が含まれていればインデックスが機能しているクリア証拠
+  clearCriteria: { requiredCellValues: ['Index Scan'] },
   solution: `-- テーブルとデータ作成
 CREATE TABLE products (
   id SERIAL PRIMARY KEY,
@@ -300,6 +310,8 @@ INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES
     '4つのテーブルを結合するには `JOIN ... ON ... JOIN ... ON ...` を連続して書きます',
     'サブクエリは `WHERE total >= (SELECT AVG(...) FROM ...)` の形で使えます',
   ],
+  // JOIN が正しく動作していれば Alice・Charlie 等の顧客名が複数行で取得できる
+  clearCriteria: { minRowCount: 2, requiredCellValues: ['Alice'] },
   solution: `-- セットアップ（上のSQLを実行済みの前提）
 
 -- 1. INNER JOIN
@@ -433,6 +445,8 @@ SELECT * FROM accounts;
     '`SAVEPOINT 名前;` で途中ポイントを作成し、`ROLLBACK TO SAVEPOINT 名前;` でそこまで戻せます',
     '`ROLLBACK TO SAVEPOINT` の後も `COMMIT;` または `ROLLBACK;` でトランザクションを終了する必要があります',
   ],
+  // トランザクション後に SELECT * FROM accounts で Alice・Bob の残高が確認できていればクリア
+  clearCriteria: { minRowCount: 2, requiredCellValues: ['Alice', 'Bob'] },
   solution: `-- セットアップ
 CREATE TABLE accounts (
   id      SERIAL PRIMARY KEY,
@@ -533,6 +547,8 @@ INSERT INTO sales (month, category, amount) VALUES
     '`LAG(amount, 1) OVER (PARTITION BY category ORDER BY month)` で前の行の値を取得できます',
     '`PARTITION BY category ORDER BY amount DESC` とすると、カテゴリごとに独立したランキングになります',
   ],
+  // 9件の売上データすべてを含むウィンドウ関数の結果が得られていればクリア
+  clearCriteria: { minRowCount: 9 },
   solution: `-- テーブル作成（省略）
 
 -- 1. ROW_NUMBER：全体の通し番号
@@ -648,6 +664,8 @@ INSERT INTO sales_data (sale_date, category, amount, region) VALUES
     '平均との比較: `HAVING SUM(amount) >= (SELECT AVG(total) FROM cte_name)` の形で使えます',
     '再帰CTE: `WITH RECURSIVE nums AS (SELECT 1 AS n UNION ALL SELECT n+1 FROM nums WHERE n < 10) SELECT * FROM nums`',
   ],
+  // CTE が正しく動作していれば月別合計や再帰結果など少なくとも 1 行以上が返る
+  clearCriteria: { minRowCount: 1 },
   solution: `-- テーブル・データ作成は省略（上のSQLを実行済みの前提）
 
 -- 1. 月ごとの売上合計（CTE）→ 10万以上の月だけ抽出
@@ -777,6 +795,8 @@ INSERT INTO employees (name, department_id, salary, hired_at) VALUES
     'ビューはテーブルと同じように `SELECT * FROM v_employee_details WHERE salary >= 600000` で使えます',
     '`CREATE OR REPLACE VIEW` は既存ビューの SELECT リストの列数・型を変えずに定義を更新できます。列を追加する場合は末尾に追加するか DROP してから CREATE します',
   ],
+  // ビューが正しく作成されていれば社員名（Alice 等）が含まれる行が 3 件以上取得できる
+  clearCriteria: { minRowCount: 3, requiredCellValues: ['Alice'] },
   solution: `-- 1. 社員詳細ビュー（部署名JOIN込み）
 CREATE VIEW v_employee_details AS
 SELECT
@@ -910,6 +930,8 @@ INSERT INTO exam_results (student_id, subject, score) VALUES
     'ORDER BY での CASE: `ORDER BY CASE subject WHEN \'math\' THEN 1 WHEN \'english\' THEN 2 ELSE 3 END` で任意順に並べます',
     'NULL 処理: `COALESCE(score::TEXT, \'未受験\')` だと型が合わないので `CASE WHEN score IS NULL THEN \'未受験\' ELSE score::TEXT END` を使います',
   ],
+  // CASE 式が機能していれば 5 人分のランク行が取得でき、Alice(数学92点)の 'S' が含まれる
+  clearCriteria: { minRowCount: 5, requiredCellValues: ['S'] },
   solution: `-- 1. 成績ランク付け
 SELECT
   s.name AS 生徒名,

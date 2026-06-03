@@ -17,6 +17,7 @@ import { programmingScenarios, type ProgrammingScenario } from '../../scenarios/
 import { validateProgrammingExport, extractDatabaseSnapshot } from '../../lib/importValidator'
 import { getPackageCompletions } from '../../lib/tsCompletions'
 import { useCompletedScenarios } from '../../hooks/useCompletedScenarios'
+import { judgeProgOutput } from '../../lib/clearJudge'
 
 // リサイズ可能な3ペインのサイズをまとめて管理する
 interface PaneSizes {
@@ -298,6 +299,8 @@ export default function ProgrammingPage() {
       setSavedFiles(nextFiles)
       setActiveFile('index.ts')
       clearOutput()
+      // シナリオが変わったら前のクリア通知を隠す
+      setShowClearNotification(false)
       // URLを更新してシナリオへの直接リンクを可能にする
       navigate(`/programming/${nextScenario.id}`)
     }, `シナリオ「${nextScenario.title}」に移動`)
@@ -373,6 +376,49 @@ export default function ProgrammingPage() {
 
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const { markCompleted, isCompleted } = useCompletedScenarios()
+
+  // クリア通知の表示フラグ（採点合格時に true になり、タイマーで自動的に消える）
+  const [showClearNotification, setShowClearNotification] = useState(false)
+
+  // output を常に最新値で保持する ref。
+  // 実行完了を検知する status effect から output を参照するために使う。
+  // status と output は別の useState のため、effect の deps に output を入れると
+  // 出力行ごとに不要な判定が走る。ref 経由にすることで status 変化時のみ参照できる。
+  const outputRef = useRef<string[]>([])
+  useEffect(() => {
+    outputRef.current = output
+  }, [output])
+
+  // 実行完了（running → ready の遷移）を検知して採点をトリガーする。
+  // wasRunningRef に直前の status = 'running' かどうかを記憶しておき、
+  // ready に変わったときだけカウンターをインクリメントする。
+  const wasRunningRef = useRef(false)
+  const [runCompletedCount, setRunCompletedCount] = useState(0)
+  useEffect(() => {
+    const wasRunning = wasRunningRef.current
+    wasRunningRef.current = status === 'running'
+    if (wasRunning && status === 'ready') {
+      setRunCompletedCount((c) => c + 1)
+    }
+  }, [status])
+
+  // 実行完了のたびにクリア採点を行う。
+  // outputRef.current は前の render で同期済みのため、ここで読んでも最新値が取れる。
+  useEffect(() => {
+    if (runCompletedCount === 0 || !scenario.clearCriteria) return
+    const passed = judgeProgOutput(outputRef.current, scenario.clearCriteria)
+    if (passed && !isCompleted('programming', scenario.id)) {
+      markCompleted('programming', scenario.id)
+      setShowClearNotification(true)
+    }
+  }, [runCompletedCount, scenario, isCompleted, markCompleted])
+
+  // クリア通知を一定時間後に自動消去する
+  useEffect(() => {
+    if (!showClearNotification) return
+    const timerId = setTimeout(() => setShowClearNotification(false), 4000)
+    return () => clearTimeout(timerId)
+  }, [showClearNotification])
 
   // シナリオの初期ファイルにリセットする。
   // undo 履歴も消えるため、誤操作防止のために window.confirm で確認を取る。
@@ -702,6 +748,20 @@ export default function ProgrammingPage() {
           onAccept={() => setHasConsented(true)}
           onCancel={() => navigate('/')}
         />
+      )}
+
+      {/* クリア通知バナー（採点合格時に表示し、4秒後に自動消去） */}
+      {showClearNotification && (
+        <button
+          type="button"
+          onClick={() => setShowClearNotification(false)}
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-lg border border-green-500/50 bg-green-500/15 px-4 py-3 text-sm font-medium text-green-400 shadow-lg transition-colors hover:bg-green-500/25"
+          aria-live="polite"
+          aria-label="シナリオクリア通知（クリックで閉じる）"
+        >
+          <CheckCircle2 size={16} />
+          シナリオクリア！お疲れ様でした 🎉
+        </button>
       )}
     </div>
   )

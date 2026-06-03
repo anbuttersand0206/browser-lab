@@ -1,3 +1,5 @@
+import type { ProgClearCriteria } from '../../lib/clearJudge'
+
 export interface ProgrammingScenario {
   id: string
   title: string
@@ -5,7 +7,11 @@ export interface ProgrammingScenario {
   files: Record<string, string>
   hints: string[]
   solution: Record<string, string>
+  // 自動採点の判定条件。未定義のシナリオはクリア判定を行わない。
+  clearCriteria?: ProgClearCriteria
 }
+
+export type { ProgClearCriteria }
 
 const scenario1: ProgrammingScenario = {
   id: 'typescript-basics',
@@ -80,6 +86,8 @@ const users = [
     '関数の型注釈は `function introduce(user: User): string { ... }` のように書きます',
     '`Array.filter()` を使って条件に合う要素だけを取り出せます',
   ],
+  // 全員の自己紹介と成人フィルタリング両方の出力が得られていればクリア
+  clearCriteria: { requiredStrings: ['全ユーザーの自己紹介', '成人ユーザーのみ'] },
   solution: {
     'index.ts': `// TypeScriptの型定義・関数・インターフェースの基本
 
@@ -210,6 +218,8 @@ main().catch(console.error);
     '`Promise.all(ids.map(id => fetchUser(id)))` で並列取得できます',
     'リトライはfor文とtry/catchを組み合わせます。最後のエラーはrethrowします',
   ],
+  // 単体取得・並列取得・リトライの3セクション全てが出力されていればクリア
+  clearCriteria: { requiredStrings: ['単体ユーザー取得', '並列ユーザー取得', 'リトライ付き取得'] },
   solution: {
     'index.ts': `// async/await と Promise の基本
 
@@ -515,6 +525,8 @@ main().catch(console.error);
     'DELETEは `db.deleteFrom("users").where("name", "=", "Charlie").execute()` です',
     '`createTable` は `.ifNotExists()` を付けると seed.sql 実行後でも安全に呼べます',
   ],
+  // テーブル作成と挿入の成功メッセージが出力されていればCRUD実装完了とみなす
+  clearCriteria: { requiredStrings: ['usersテーブルを作成しました', '3人のユーザーを挿入しました'] },
   solution: {
     'index.ts': `import {
   Kysely, PostgresAdapter, PostgresIntrospector, PostgresQueryCompiler,
@@ -746,6 +758,8 @@ console.log('\\n=== カテゴリ別サマリー ===')
     '`cheapestInCategory` は `filter` で対象商品を絞り込んでから `reduce((min, p) => p.price < min.price ? p : min)` で最小値を探せます',
     '`summarize` の reduce 初期値は `{} as Record<string, { count: number; total: number }>` にします。各カテゴリが未登録なら `{ count: 0, total: 0 }` で初期化してから加算します',
   ],
+  // 商品名一覧・合計金額・カテゴリ別サマリーの 3 セクション全てが出力されていればクリア
+  clearCriteria: { requiredStrings: ['商品名一覧', '合計金額', 'カテゴリ別サマリー'] },
   solution: {
     'index.ts': `// 配列の高階関数（map / filter / reduce）
 
@@ -906,6 +920,8 @@ for (const shape of shapes) {
     'ヘロンの公式: `const s = (a + b + c) / 2; return Math.sqrt(s * (s - a) * (s - b) * (s - c))`',
     '`instanceof` は `shape instanceof Circle` のように使います。型ガードとしても機能します',
   ],
+  // 3つの図形クラスすべての面積が出力されていればクリア
+  clearCriteria: { requiredStrings: ['Circle: area=', 'Rectangle: area=', 'Triangle: area='] },
   solution: {
     'index.ts': `// クラス・継承・抽象クラス
 
@@ -1091,6 +1107,8 @@ app.listen(PORT, () => {
     '`res.json()` の引数にオブジェクトや配列を渡すと JSON レスポンスになります。`Content-Type: application/json` も自動で付与されます',
     'ミドルウェアはルートより前に `app.use()` で登録すると全リクエストに適用されます。順序が重要です',
   ],
+  // サーバー起動メッセージがコンソールに出力されていればクリア
+  clearCriteria: { requiredStrings: ['サーバー起動: http://localhost:3000'] },
   solution: {
     'index.ts': `import express from 'express'
 
@@ -1236,6 +1254,8 @@ console.log('\\n=== zip ===')
     'Result 型: `type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E }` — divide は `if (b === 0) return { ok: false, error: new Error(...) }` で返します',
     'zip は `Array.from({ length: Math.min(a.length, b.length) }, (_, i) => [a[i], b[i]] as [A, B])` で実装できます',
   ],
+  // identity・Stack の 2 セクションが出力されていれば Generics の基本を理解したとみなす
+  clearCriteria: { requiredStrings: ['=== identity ===', '=== Stack<number> ==='] },
   solution: {
     'index.ts': `// Generics（型パラメータ）の基本
 
@@ -1461,6 +1481,8 @@ console.log('\\n=== 判別可能 union ===')
     '`parseApiResponse`: `const data: unknown = JSON.parse(json); if (!isApiUser(data)) throw new Error(...); return data;`',
     '`switch (shape.kind) { case \'circle\': return Math.PI * shape.radius ** 2; ... }` — TypeScript はカバーされていないケースを `never` で検知します',
   ],
+  // instanceof ガードの 2 種類のエラー型が正しく出力されていればクリア
+  clearCriteria: { requiredStrings: ['ネットワークエラー', 'バリデーションエラー'] },
   solution: {
     'index.ts': `// 型ガード（type predicates）
 
