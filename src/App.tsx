@@ -10,8 +10,9 @@ export default function App() {
       <HashRouter>
         <Routes>
           <Route path="/" element={<TopPage />} />
-          <Route path="/programming" element={<ProgrammingPage />} />
-          <Route path="/database" element={<DatabasePage />} />
+          {/* :scenarioId? を末尾に付けてシナリオへの直接リンクを可能にする */}
+          <Route path="/programming/:scenarioId?" element={<ProgrammingPage />} />
+          <Route path="/database/:scenarioId?" element={<DatabasePage />} />
         </Routes>
       </HashRouter>
     </ThemeProvider>

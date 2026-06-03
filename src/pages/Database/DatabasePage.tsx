@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useDebounce } from '../../hooks/useDebounce'
-import { useNavigate } from 'react-router-dom'
-import { Database, Sun, Moon, ArrowLeft, Play, ChevronRight, HelpCircle, CheckCircle2 } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { Database, Sun, Moon, ArrowLeft, Play, ChevronRight, HelpCircle, CheckCircle2, AlignLeft } from 'lucide-react'
 import { usePGLite, type QueryResult } from '../../hooks/usePGLite'
 import { useUnsavedGuard } from '../../hooks/useUnsavedGuard'
 import { useJsonIO } from '../../hooks/useJsonIO'
@@ -19,6 +19,7 @@ import { HelpModal, EDITOR_COMMON_SHORTCUTS, DB_SHORTCUTS } from '../../componen
 import { useCompletedScenarios } from '../../hooks/useCompletedScenarios'
 import { databaseScenarios, type DatabaseScenario } from '../../scenarios/database'
 import { validateDatabaseExport, extractDatabaseSnapshot } from '../../lib/importValidator'
+import { formatSql } from '../../lib/sqlFormatter'
 
 // リサイズ可能な3ペインのサイズをまとめて管理する
 interface PaneSizes {
@@ -44,34 +45,67 @@ const SAVE_DEBOUNCE_MS = 1000
 
 // バージョンフィールドを付けることで、将来のデータ形式変更時に
 // 古い保存データを安全に棄却できる。
-interface DbProgress {
+// v2: シナリオごとにSQLを個別保存することで、切り替え後も編集内容が残るようにした
+interface DbProgressV2 {
+  version: 2
+  scenarioId: string
+  // シナリオID → 編集中のSQL のマップ。シナリオを切り替えても前の作業が消えない。
+  scenarioContents: Record<string, string>
+  updatedAt: string
+}
+
+// v1 形式（最後の1シナリオのみ保存）。v2 へのマイグレーション用に残す。
+interface DbProgressV1 {
   version: 1
   scenarioId: string
   sql: string
   updatedAt: string
 }
 
-// JSON.parse 後の unknown を型安全に検証する型ガード。
-// zod を追加しない代わりに最小限のフィールドチェックで代替する。
-function isValidDbProgress(value: unknown): value is DbProgress {
+// JSON.parse 後の unknown を型安全に検証する型ガード（v2）
+function isDbProgressV2(value: unknown): value is DbProgressV2 {
+  if (typeof value !== 'object' || value === null) return false
+  const v = value as Record<string, unknown>
+  if (v.version !== 2 || typeof v.scenarioId !== 'string') return false
+  // scenarioContents の値がすべて string であることを確認する
+  if (typeof v.scenarioContents !== 'object' || v.scenarioContents === null) return false
+  return Object.values(v.scenarioContents as object).every((x) => typeof x === 'string')
+}
+
+// v1 形式の型ガード（マイグレーション時のみ使用）
+function isDbProgressV1(value: unknown): value is DbProgressV1 {
   if (typeof value !== 'object' || value === null) return false
   const v = value as Record<string, unknown>
   return v.version === 1 && typeof v.scenarioId === 'string' && typeof v.sql === 'string'
 }
 
-// 前回終了時のシナリオと SQL を LocalStorage から復元する。
-// バージョン不一致・JSON 破損・存在しないシナリオ ID はいずれもデフォルトにフォールバックする。
-function restoreDbProgress(): { scenario: DatabaseScenario; sql: string } {
+// 前回終了時のシナリオと各シナリオの SQL を LocalStorage から復元する。
+// バージョン不一致・JSON 破損・存在しないシナリオ ID はすべてデフォルトにフォールバック。
+// v1 → v2 のマイグレーション: v1 の sql を scenarioId に紐づけて引き継ぐ。
+function restoreDbProgress(): { scenario: DatabaseScenario; scenarioContents: Record<string, string> } {
+  const defaultResult = { scenario: databaseScenarios[0], scenarioContents: {} }
   try {
     const raw = localStorage.getItem(LS_KEY)
-    if (raw === null) return { scenario: databaseScenarios[0], sql: databaseScenarios[0].initialSQL }
+    if (raw === null) return defaultResult
+
     const parsed: unknown = JSON.parse(raw)
-    if (!isValidDbProgress(parsed)) return { scenario: databaseScenarios[0], sql: databaseScenarios[0].initialSQL }
-    const scenario = databaseScenarios.find((s) => s.id === parsed.scenarioId) ?? databaseScenarios[0]
-    return { scenario, sql: parsed.sql }
+
+    // v2 形式: そのまま復元する
+    if (isDbProgressV2(parsed)) {
+      const scenario = databaseScenarios.find((s) => s.id === parsed.scenarioId) ?? databaseScenarios[0]
+      return { scenario, scenarioContents: parsed.scenarioContents }
+    }
+
+    // v1 形式: 旧データを失わずにマイグレーションする
+    if (isDbProgressV1(parsed)) {
+      const scenario = databaseScenarios.find((s) => s.id === parsed.scenarioId) ?? databaseScenarios[0]
+      return { scenario, scenarioContents: { [scenario.id]: parsed.sql } }
+    }
+
+    return defaultResult
   } catch {
     // JSON 破損時はデフォルトで起動する
-    return { scenario: databaseScenarios[0], sql: databaseScenarios[0].initialSQL }
+    return defaultResult
   }
 }
 
@@ -99,6 +133,7 @@ const DATABASE_RECOMMENDATIONS = [
 
 export default function DatabasePage() {
   const navigate = useNavigate()
+  const { scenarioId: urlScenarioId } = useParams<{ scenarioId?: string }>()
   const { resolvedTheme, setTheme } = useTheme()
   const { exportJson, importJson } = useJsonIO()
 
@@ -109,11 +144,33 @@ export default function DatabasePage() {
 
   const { ready, error: dbError, exec, tables, refreshTables, exportSnapshot } = usePGLite(hasConsented)
 
-  // 前回の進捗を復元する（ページ再訪問時にシナリオ選択と編集内容を引き継ぐ）
-  const [scenario, setScenario] = useState<DatabaseScenario>(() => restoreDbProgress().scenario)
-  const [sql, setSql] = useState<string>(() => restoreDbProgress().sql)
+  // LocalStorage から前回の進捗を一度だけ読む。
+  // useState lazy initializer は初回マウント時のみ実行されるため、
+  // レンダリングのたびに localStorage を読まないよう防止できる。
+  const [savedProgress] = useState(() => restoreDbProgress())
+
+  // URLパラメータのシナリオIDに対応するシナリオオブジェクト
+  // 不正なIDの場合は null になりフォールバック先で吸収する
+  const urlMatchedScenario = urlScenarioId
+    ? (databaseScenarios.find((s) => s.id === urlScenarioId) ?? null)
+    : null
+
+  const initialScenario = urlMatchedScenario ?? savedProgress.scenario
+
+  // URLパラメータ → LocalStorage → デフォルトの優先順でシナリオを決定する
+  const [scenario, setScenario] = useState<DatabaseScenario>(initialScenario)
+
+  // シナリオごとの編集内容を一括管理する（切り替えても前の作業が消えない）
+  const [scenarioContents, setScenarioContents] = useState<Record<string, string>>(
+    savedProgress.scenarioContents
+  )
+
+  // アクティブシナリオの SQL（保存済み内容があれば復元、なければ initialSQL）
+  const initialSql = savedProgress.scenarioContents[initialScenario.id] ?? initialScenario.initialSQL
+  const [sql, setSql] = useState<string>(initialSql)
   // savedSql はエクスポート後の状態を保持し、isDirty の基準となる
-  const [savedSql, setSavedSql] = useState<string>(() => restoreDbProgress().sql)
+  const [savedSql, setSavedSql] = useState<string>(initialSql)
+
   const [latestResult, setLatestResult] = useState<QueryResult[]>([])
   // queryHistory は JSON エクスポート用に実行済みクエリを蓄積する
   const [queryHistory, setQueryHistory] = useState<QueryResult[]>([])
@@ -126,6 +183,24 @@ export default function DatabasePage() {
     scenarioWidthPx: 320,
     editorHeightPx: 240,
   })
+
+  // SQL変更時に sql state と scenarioContents を同時に更新するラッパー。
+  // 呼び出し元が setSql + setScenarioContents を個別に呼ぶとシナリオIDの
+  // クロージャずれが起きやすいため、一か所にまとめる。
+  const updateSql = useCallback((newSql: string) => {
+    setSql(newSql)
+    setScenarioContents((prev) => ({ ...prev, [scenario.id]: newSql }))
+  }, [scenario.id])
+
+  // 初回マウント時にURLへシナリオIDを付与する。
+  // ページを直接開いた場合（/#/database のみ）に対し、現在のシナリオIDを追加して
+  // ブックマークやシェアで直接リンクできるようにする。
+  useEffect(() => {
+    if (!urlScenarioId) {
+      navigate(`/database/${initialScenario.id}`, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // 初回マウント時のみ実行
 
   const handleExport = useCallback(async () => {
     // 現在のPGLite DBの状態をSQLダンプとして同梱する。
@@ -171,30 +246,34 @@ export default function DatabasePage() {
 
       // 通常のDBコースJSON読み込み
       // as キャストの代わりに型ガードでランタイム検証する。
-      // SQL 内容の長さ超過や不正なデータ形状をここで排除する。
       const result = validateDatabaseExport(raw)
       if (!result.ok) {
         alert(`読み込みエラー: ${result.reason}`)
         return
       }
       if (result.data.currentEditorContent) {
-        setSql(result.data.currentEditorContent)
-        setSavedSql(result.data.currentEditorContent)
+        const importedSql = result.data.currentEditorContent
+        updateSql(importedSql)
+        setSavedSql(importedSql)
       }
     } catch {
       // ファイル未選択・キャンセルの場合は何もしない
     }
-  }, [importJson, exec, refreshTables])
+  }, [importJson, exec, refreshTables, updateSql])
 
   const { pendingNav, guardNavigate, confirmSaveAndGo, confirmDiscardAndGo, cancelNavigation } =
     useUnsavedGuard({ isDirty, onSave: handleExport })
 
   const handleScenarioSelect = (nextScenario: DatabaseScenario) => {
     guardNavigate(() => {
+      // 保存済みの編集内容を復元し、なければ初期 SQL を使う
+      const nextSql = scenarioContents[nextScenario.id] ?? nextScenario.initialSQL
       setScenario(nextScenario)
-      setSql(nextScenario.initialSQL)
-      setSavedSql(nextScenario.initialSQL)
+      setSql(nextSql)
+      setSavedSql(nextSql)
       setLatestResult([])
+      // URLを更新してシナリオへの直接リンクを可能にする
+      navigate(`/database/${nextScenario.id}`)
     }, `シナリオ「${nextScenario.title}」に移動`)
   }
 
@@ -225,7 +304,7 @@ export default function DatabasePage() {
   }, [ready, isExecuting, sql, exec, refreshTables])
 
   const handleTableClick = (tableName: string) => {
-    setSql(`SELECT * FROM ${tableName} LIMIT 100;`)
+    updateSql(`SELECT * FROM ${tableName} LIMIT 100;`)
   }
 
   // ドラッグ中の状態。mousedown から mousemove/mouseup までを ref で追跡する。
@@ -275,17 +354,17 @@ export default function DatabasePage() {
   // 入力が止まってから SAVE_DEBOUNCE_MS 後に保存する。
   // 1文字ごとに同期書き込みしないための debounce。
   const debouncedScenarioId = useDebounce(scenario.id, SAVE_DEBOUNCE_MS)
-  const debouncedSql = useDebounce(sql, SAVE_DEBOUNCE_MS)
+  const debouncedScenarioContents = useDebounce(scenarioContents, SAVE_DEBOUNCE_MS)
 
   useEffect(() => {
-    const progress: DbProgress = {
-      version: 1,
+    const progress: DbProgressV2 = {
+      version: 2,
       scenarioId: debouncedScenarioId,
-      sql: debouncedSql,
+      scenarioContents: debouncedScenarioContents,
       updatedAt: new Date().toISOString(),
     }
     localStorage.setItem(LS_KEY, JSON.stringify(progress))
-  }, [debouncedScenarioId, debouncedSql])
+  }, [debouncedScenarioId, debouncedScenarioContents])
 
   // Ctrl+S / Cmd+S でエクスポートできるようにする。
   // ブラウザ標準の「ページを保存」ダイアログを preventDefault で抑制している。
@@ -333,9 +412,17 @@ export default function DatabasePage() {
       `シナリオ「${scenario.title}」の初期 SQL に戻します。\n現在の編集内容は失われます。よろしいですか？`
     )
     if (!confirmed) return
-    setSql(scenario.initialSQL)
-    setSavedSql(scenario.initialSQL)
+    const initialSql = scenario.initialSQL
+    updateSql(initialSql)
+    setSavedSql(initialSql)
     setLatestResult([])
+  }
+
+  // SQL を整形してエディタに反映する。
+  // コード・ガード: PGLite が未起動の場合は整形のみ行い、実行はしない。
+  const handleFormat = () => {
+    const formatted = formatSql(sql)
+    updateSql(formatted)
   }
 
   return (
@@ -414,7 +501,7 @@ export default function DatabasePage() {
               onShowSchema={() => setIsSchemaViewOpen(true)}
             />
             {/* 実行済みクエリを履歴として表示し、クリックでエディタに再読み込みできる */}
-            <QueryHistory queries={queryHistory} onSelect={setSql} />
+            <QueryHistory queries={queryHistory} onSelect={updateSql} />
           </div>
         </div>
 
@@ -430,28 +517,39 @@ export default function DatabasePage() {
             onLoad={handleImport}
             onReset={handleReset}
             extra={
-              <button
-                onClick={executeSql}
-                disabled={isExecuteDisabled}
-                className={`flex items-center gap-1.5 rounded px-3 py-1 text-xs font-medium transition-colors ${
-                  isExecuteDisabled
-                    ? 'cursor-not-allowed bg-gray-600 text-gray-400'
-                    : 'bg-green-600 text-white hover:bg-green-700'
-                }`}
-                title="Ctrl+Enter でも実行できます"
-              >
-                {isExecuting ? (
-                  <>
-                    <span className="inline-block h-2 w-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    実行中...
-                  </>
-                ) : (
-                  <>
-                    <Play size={12} />
-                    実行 (Ctrl+Enter)
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleFormat}
+                  title="SQLを整形する（キーワード大文字化・主要節ごとに改行）"
+                  aria-label="SQLを整形"
+                  className="flex items-center gap-1 rounded px-2.5 py-1 text-xs text-dark-textDim transition-colors hover:bg-dark-hover hover:text-dark-text dark:text-dark-textDim dark:hover:bg-dark-hover dark:hover:text-dark-text light:text-light-textDim light:hover:bg-light-hover light:hover:text-light-text"
+                >
+                  <AlignLeft size={12} />
+                  整形
+                </button>
+                <button
+                  onClick={executeSql}
+                  disabled={isExecuteDisabled}
+                  className={`flex items-center gap-1.5 rounded px-3 py-1 text-xs font-medium transition-colors ${
+                    isExecuteDisabled
+                      ? 'cursor-not-allowed bg-gray-600 text-gray-400'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
+                  title="Ctrl+Enter でも実行できます"
+                >
+                  {isExecuting ? (
+                    <>
+                      <span className="inline-block h-2 w-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      実行中...
+                    </>
+                  ) : (
+                    <>
+                      <Play size={12} />
+                      実行 (Ctrl+Enter)
+                    </>
+                  )}
+                </button>
+              </div>
             }
           />
 
@@ -471,7 +569,7 @@ export default function DatabasePage() {
               <CodeEditor
                 key={scenario.id}
                 value={sql}
-                onChange={setSql}
+                onChange={updateSql}
                 language="sql"
                 onCtrlEnter={executeSql}
                 sqlTables={tables.map((t) => ({ name: t.name, columns: t.columns.map((c) => c.name) }))}

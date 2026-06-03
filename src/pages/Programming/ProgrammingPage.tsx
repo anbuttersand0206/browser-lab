@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useDebounce } from '../../hooks/useDebounce'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Zap, Sun, Moon, ArrowLeft, ChevronRight, HelpCircle, Plus, Check, X, CheckCircle2 } from 'lucide-react'
 import { useWebContainer, type ContainerStatus } from '../../hooks/useWebContainer'
 import { useUnsavedGuard } from '../../hooks/useUnsavedGuard'
@@ -40,55 +40,92 @@ const LS_KEY = 'browser-lab:prog:progress'
 // 入力が止まってから保存するまでの待機時間（ミリ秒）
 const SAVE_DEBOUNCE_MS = 1000
 
-// バージョンフィールドを付けることで、将来のデータ形式変更時に
-// 古い保存データを安全に棄却できる。
-interface ProgProgress {
+// v2: シナリオごとにファイル群を個別保存することで、切り替えても作業内容が残るようにした
+interface ProgProgressV2 {
+  version: 2
+  scenarioId: string
+  // シナリオID → ファイル群 のマップ
+  scenarioContents: Record<string, Record<string, string>>
+  updatedAt: string
+}
+
+// v1 形式（最後の1シナリオのみ保存）。v2 へのマイグレーション用に残す。
+interface ProgProgressV1 {
   version: 1
   scenarioId: string
   files: Record<string, string>
   updatedAt: string
 }
 
-// files の値がすべて string であることを検証するヘルパー。
-// JSON.parse で得た unknown から Record<string, string> を型安全に取り出すために使う。
+// files の値がすべて string であることを検証するヘルパー
 function isStringRecord(value: unknown): value is Record<string, string> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
   return Object.values(value as object).every((v) => typeof v === 'string')
 }
 
-// JSON.parse 後の unknown を型安全に検証する型ガード。
-function isValidProgProgress(value: unknown): value is ProgProgress {
+// Record<string, Record<string, string>> の型ガード
+function isFilesMap(value: unknown): value is Record<string, Record<string, string>> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  return Object.values(value as object).every(isStringRecord)
+}
+
+// JSON.parse 後の unknown を型安全に検証する型ガード（v2）
+function isProgProgressV2(value: unknown): value is ProgProgressV2 {
+  if (typeof value !== 'object' || value === null) return false
+  const v = value as Record<string, unknown>
+  return v.version === 2 && typeof v.scenarioId === 'string' && isFilesMap(v.scenarioContents)
+}
+
+// v1 形式の型ガード（マイグレーション時のみ使用）
+function isProgProgressV1(value: unknown): value is ProgProgressV1 {
   if (typeof value !== 'object' || value === null) return false
   const v = value as Record<string, unknown>
   return v.version === 1 && typeof v.scenarioId === 'string' && isStringRecord(v.files)
 }
 
 // 前回終了時のシナリオとファイル群を LocalStorage から復元する。
-// バージョン不一致・JSON 破損・存在しないシナリオ ID はいずれもデフォルトにフォールバックする。
-function restoreProgrammingProgress(): { scenario: ProgrammingScenario; files: Record<string, string> } {
+// バージョン不一致・JSON 破損・存在しないシナリオ ID はすべてデフォルトにフォールバック。
+// v1 → v2 のマイグレーション: v1 の files を scenarioId に紐づけて引き継ぐ。
+function restoreProgrammingProgress(): {
+  scenario: ProgrammingScenario
+  scenarioContents: Record<string, Record<string, string>>
+} {
+  const defaultResult = { scenario: programmingScenarios[0], scenarioContents: {} }
   try {
     const raw = localStorage.getItem(LS_KEY)
-    if (raw === null) return { scenario: programmingScenarios[0], files: programmingScenarios[0].files }
+    if (raw === null) return defaultResult
+
     const parsed: unknown = JSON.parse(raw)
-    if (!isValidProgProgress(parsed)) return { scenario: programmingScenarios[0], files: programmingScenarios[0].files }
-    const scenario = programmingScenarios.find((s) => s.id === parsed.scenarioId) ?? programmingScenarios[0]
-    return { scenario, files: parsed.files }
+
+    // v2 形式: そのまま復元する
+    if (isProgProgressV2(parsed)) {
+      const scenario = programmingScenarios.find((s) => s.id === parsed.scenarioId) ?? programmingScenarios[0]
+      return { scenario, scenarioContents: parsed.scenarioContents }
+    }
+
+    // v1 形式: 旧データを失わずにマイグレーションする
+    if (isProgProgressV1(parsed)) {
+      const scenario = programmingScenarios.find((s) => s.id === parsed.scenarioId) ?? programmingScenarios[0]
+      return { scenario, scenarioContents: { [scenario.id]: parsed.files } }
+    }
+
+    return defaultResult
   } catch {
     // JSON 破損時はデフォルトで起動する
-    return { scenario: programmingScenarios[0], files: programmingScenarios[0].files }
+    return defaultResult
   }
 }
 
 // ファイル名から言語バッジ文字列を返す。
 // サイドバーの狭いスペースで拡張子を視覚的に区別するための短縮表記。
 function getFileBadge(filename: string): string {
-  if (filename.endsWith('.json'))                    return '{}'
-  if (filename.endsWith('.sql'))                     return 'SQL'
-  if (filename.endsWith('.tsx'))                     return 'TSX'
-  if (filename.endsWith('.ts'))                      return 'TS'
+  if (filename.endsWith('.json'))                     return '{}'
+  if (filename.endsWith('.sql'))                      return 'SQL'
+  if (filename.endsWith('.tsx'))                      return 'TSX'
+  if (filename.endsWith('.ts'))                       return 'TS'
   if (filename.endsWith('.js') || filename.endsWith('.mjs')) return 'JS'
-  if (filename.endsWith('.html'))                    return 'HTML'
-  if (filename.endsWith('.css'))                     return 'CSS'
+  if (filename.endsWith('.html'))                     return 'HTML'
+  if (filename.endsWith('.css'))                      return 'CSS'
   return '...'
 }
 
@@ -140,6 +177,7 @@ const PROGRAMMING_RECOMMENDATIONS = [
 
 export default function ProgrammingPage() {
   const navigate = useNavigate()
+  const { scenarioId: urlScenarioId } = useParams<{ scenarioId?: string }>()
   const { resolvedTheme, setTheme } = useTheme()
   const { exportJson, importJson } = useJsonIO()
 
@@ -150,12 +188,30 @@ export default function ProgrammingPage() {
 
   const { status, output, run, killProcess, clearOutput, readFileFromContainer, serverUrl } = useWebContainer(hasConsented)
 
-  // 前回の進捗を復元する（ページ再訪問時にシナリオ選択と編集ファイルを引き継ぐ）
-  const [scenario, setScenario] = useState<ProgrammingScenario>(() => restoreProgrammingProgress().scenario)
-  const [files, setFiles] = useState<Record<string, string>>(() => restoreProgrammingProgress().files)
+  // LocalStorage から前回の進捗を一度だけ読む（レンダリングのたびに読まないよう防止）
+  const [savedProgress] = useState(() => restoreProgrammingProgress())
+
+  // URLパラメータのシナリオIDに対応するシナリオオブジェクト
+  const urlMatchedScenario = urlScenarioId
+    ? (programmingScenarios.find((s) => s.id === urlScenarioId) ?? null)
+    : null
+
+  const initialScenario = urlMatchedScenario ?? savedProgress.scenario
+
+  // URLパラメータ → LocalStorage → デフォルトの優先順でシナリオを決定する
+  const [scenario, setScenario] = useState<ProgrammingScenario>(initialScenario)
+
+  // シナリオごとのファイル群を一括管理する（切り替えても前の作業が消えない）
+  const [scenarioContents, setScenarioContents] = useState<Record<string, Record<string, string>>>(
+    savedProgress.scenarioContents
+  )
+
+  // アクティブシナリオのファイル群（保存済みがあれば復元、なければ initialFiles）
+  const initialFiles = savedProgress.scenarioContents[initialScenario.id] ?? initialScenario.files
+  const [files, setFiles] = useState<Record<string, string>>(initialFiles)
   const [activeFile, setActiveFile] = useState('index.ts')
   // savedFiles はエクスポート後の状態を保持し、isDirty の基準となる
-  const [savedFiles, setSavedFiles] = useState<Record<string, string>>(() => restoreProgrammingProgress().files)
+  const [savedFiles, setSavedFiles] = useState<Record<string, string>>(initialFiles)
 
   const isDirty = JSON.stringify(files) !== JSON.stringify(savedFiles)
 
@@ -164,6 +220,22 @@ export default function ProgrammingPage() {
     scenarioWidthPx: 320,
     consoleHeightPx: 160,
   })
+
+  // ファイル群変更時に files state と scenarioContents を同時に更新するラッパー。
+  // setFiles を直接呼ぶと scenarioContents との乖離が起きやすいため一か所にまとめる。
+  const updateFiles = useCallback((newFiles: Record<string, string>) => {
+    setFiles(newFiles)
+    setScenarioContents((prev) => ({ ...prev, [scenario.id]: newFiles }))
+  }, [scenario.id])
+
+  // 初回マウント時にURLへシナリオIDを付与する。
+  // ページを直接開いた場合（/#/programming のみ）に対し、現在のシナリオIDを追加する。
+  useEffect(() => {
+    if (!urlScenarioId) {
+      navigate(`/programming/${initialScenario.id}`, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // 初回マウント時のみ実行
 
   const handleExport = useCallback(async () => {
     // コード実行後に生成された db-dump.sql があれば databaseSnapshot として同梱する。
@@ -192,7 +264,7 @@ export default function ProgrammingPage() {
       const snapshot = extractDatabaseSnapshot(raw)
       if (snapshot) {
         const nextFiles = { ...files, 'seed.sql': snapshot }
-        setFiles(nextFiles)
+        updateFiles(nextFiles)
         setSavedFiles(nextFiles)
         alert('DBスナップショットを seed.sql として追加しました。\n「実行」するとDBが復元された状態でコードが動きます。')
         return
@@ -200,31 +272,34 @@ export default function ProgrammingPage() {
 
       // 通常のプログラミングコースJSON読み込み
       // as キャストの代わりに型ガードでランタイム検証する。
-      // ファイルパスのパストラバーサルや不正なデータ形状をここで排除する。
       const result = validateProgrammingExport(raw)
       if (!result.ok) {
         alert(`読み込みエラー: ${result.reason}`)
         return
       }
       if (Object.keys(result.data.files).length > 0) {
-        setFiles(result.data.files)
+        updateFiles(result.data.files)
         setSavedFiles(result.data.files)
       }
     } catch {
       // ファイル未選択・キャンセルの場合は何もしない
     }
-  }, [importJson, files])
+  }, [importJson, files, updateFiles])
 
   const { pendingNav, guardNavigate, confirmSaveAndGo, confirmDiscardAndGo, cancelNavigation } =
     useUnsavedGuard({ isDirty, onSave: handleExport })
 
   const handleScenarioSelect = (nextScenario: ProgrammingScenario) => {
     guardNavigate(() => {
+      // 保存済みのファイル群を復元し、なければ初期ファイルを使う
+      const nextFiles = scenarioContents[nextScenario.id] ?? nextScenario.files
       setScenario(nextScenario)
-      setFiles(nextScenario.files)
-      setSavedFiles(nextScenario.files)
+      setFiles(nextFiles)
+      setSavedFiles(nextFiles)
       setActiveFile('index.ts')
       clearOutput()
+      // URLを更新してシナリオへの直接リンクを可能にする
+      navigate(`/programming/${nextScenario.id}`)
     }, `シナリオ「${nextScenario.title}」に移動`)
   }
 
@@ -233,7 +308,7 @@ export default function ProgrammingPage() {
   }
 
   const updateActiveFile = (content: string) => {
-    setFiles((prev) => ({ ...prev, [activeFile]: content }))
+    updateFiles({ ...files, [activeFile]: content })
   }
 
   // ドラッグ中の状態。mousedown から mousemove/mouseup までを ref で追跡する。
@@ -284,17 +359,17 @@ export default function ProgrammingPage() {
   // 入力が止まってから SAVE_DEBOUNCE_MS 後に保存する。
   // ファイル編集は頻繁に発生するため、1文字ごとに同期書き込みしないための debounce。
   const debouncedScenarioId = useDebounce(scenario.id, SAVE_DEBOUNCE_MS)
-  const debouncedFiles = useDebounce(files, SAVE_DEBOUNCE_MS)
+  const debouncedScenarioContents = useDebounce(scenarioContents, SAVE_DEBOUNCE_MS)
 
   useEffect(() => {
-    const progress: ProgProgress = {
-      version: 1,
+    const progress: ProgProgressV2 = {
+      version: 2,
       scenarioId: debouncedScenarioId,
-      files: debouncedFiles,
+      scenarioContents: debouncedScenarioContents,
       updatedAt: new Date().toISOString(),
     }
     localStorage.setItem(LS_KEY, JSON.stringify(progress))
-  }, [debouncedScenarioId, debouncedFiles])
+  }, [debouncedScenarioId, debouncedScenarioContents])
 
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const { markCompleted, isCompleted } = useCompletedScenarios()
@@ -306,7 +381,7 @@ export default function ProgrammingPage() {
       `シナリオ「${scenario.title}」の初期コードに戻します。\n現在の編集内容は失われます。よろしいですか？`
     )
     if (!confirmed) return
-    setFiles(scenario.files)
+    updateFiles(scenario.files)
     setSavedFiles(scenario.files)
     setActiveFile('index.ts')
     clearOutput()
@@ -331,7 +406,7 @@ export default function ProgrammingPage() {
       setNewFileName('')
       return
     }
-    setFiles((prev) => ({ ...prev, [trimmedName]: '' }))
+    updateFiles({ ...files, [trimmedName]: '' })
     setActiveFile(trimmedName)
     setIsAddingFile(false)
     setNewFileName('')
@@ -343,7 +418,7 @@ export default function ProgrammingPage() {
     const nextFiles = Object.fromEntries(
       Object.entries(files).filter(([name]) => name !== filename)
     )
-    setFiles(nextFiles)
+    updateFiles(nextFiles)
     // 削除対象がアクティブファイルだった場合は先頭ファイルに切り替える
     if (activeFile === filename) {
       setActiveFile(Object.keys(nextFiles)[0])
