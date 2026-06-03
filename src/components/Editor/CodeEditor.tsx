@@ -6,6 +6,7 @@ import { sql, PostgreSQL } from '@codemirror/lang-sql'
 import { autocompletion, completionKeymap, completeFromList, type Completion } from '@codemirror/autocomplete'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
+import { search, searchKeymap } from '@codemirror/search'
 import { bracketMatching, foldGutter, indentOnInput, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { useTheme } from '../../hooks/useTheme'
 import { TS_GLOBAL_COMPLETIONS } from '../../lib/tsCompletions'
@@ -24,6 +25,11 @@ const lightTheme = EditorView.theme({
   '.cm-tooltip.cm-tooltip-autocomplete': { backgroundColor: '#f8f8f8', border: '1px solid #ddd' },
   '.cm-completionLabel': { color: '#1e1e1e' },
   '.cm-completionDetail': { color: '#795e26' },
+  // 検索パネルのライトテーマ（デフォルトはダーク色なのでライト用に上書きする）
+  '.cm-search': { backgroundColor: '#f5f5f5', borderTop: '1px solid #e4e4e4', padding: '4px 8px' },
+  '.cm-search input': { backgroundColor: '#ffffff', color: '#1e1e1e', border: '1px solid #ddd', borderRadius: '3px' },
+  '.cm-search button': { color: '#333' },
+  '.cm-search label': { color: '#333' },
 })
 
 // SQL モード用スキーマ。テーブル名とカラム名を補完候補に使う。
@@ -99,8 +105,11 @@ export function CodeEditor({
       foldGutter(),
       indentOnInput(),
       bracketMatching(),
-      // completionKeymap は defaultKeymap より前に置き、補完表示中の Tab/Enter を優先させる
-      keymap.of([...completionKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab]),
+      // completionKeymap・searchKeymap は defaultKeymap より前に置き、
+      // 補完表示中の Tab/Enter・検索中の Enter などを優先させる
+      keymap.of([...completionKeymap, ...searchKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab]),
+      // Ctrl+F / Cmd+F でエディタ内検索パネルを開く
+      search({ top: true }),
       ...ctrlEnterKeymap,
       ...(resolvedTheme === 'dark'
         ? [oneDark]

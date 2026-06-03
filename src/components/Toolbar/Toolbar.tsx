@@ -1,4 +1,4 @@
-import { Play, Square, Download, FolderOpen } from 'lucide-react'
+import { Play, Square, Download, FolderOpen, RotateCcw } from 'lucide-react'
 
 interface ToolbarProps {
   isDirty: boolean
@@ -7,10 +7,13 @@ interface ToolbarProps {
   isRunning?: boolean
   onSave: () => void
   onLoad: () => void
+  // 指定されているとき、初期状態に戻す「リセット」ボタンを表示する。
+  // 確認ダイアログの表示は呼び出し側が責任を持つ（ツールバー自体は UI のみ）。
+  onReset?: () => void
   extra?: React.ReactNode
 }
 
-export function Toolbar({ isDirty, onRun, onStop, isRunning, onSave, onLoad, extra }: ToolbarProps) {
+export function Toolbar({ isDirty, onRun, onStop, isRunning, onSave, onLoad, onReset, extra }: ToolbarProps) {
   return (
     <div className="flex h-9 flex-shrink-0 items-center gap-1 border-b border-dark-border bg-dark-tab px-3 dark:border-dark-border dark:bg-dark-tab light:border-light-border light:bg-light-tab">
       {onRun && (
@@ -47,9 +50,22 @@ export function Toolbar({ isDirty, onRun, onStop, isRunning, onSave, onLoad, ext
         </span>
       )}
 
+      {onReset && (
+        <button
+          onClick={onReset}
+          title="シナリオの初期コードに戻す"
+          aria-label="初期コードにリセット"
+          className="flex items-center gap-1 rounded px-2.5 py-1 text-xs text-dark-textDim transition-colors hover:bg-dark-hover hover:text-orange-400 dark:text-dark-textDim dark:hover:bg-dark-hover dark:hover:text-orange-400 light:text-light-textDim light:hover:bg-light-hover light:hover:text-orange-500"
+        >
+          <RotateCcw size={13} />
+          リセット
+        </button>
+      )}
+
       <button
         onClick={onSave}
-        title="JSONとしてエクスポート"
+        title="JSONとしてエクスポート（Ctrl+S）"
+        aria-label="JSONとしてエクスポート"
         className="flex items-center gap-1 rounded px-2.5 py-1 text-xs text-dark-textDim transition-colors hover:bg-dark-hover hover:text-dark-text dark:text-dark-textDim dark:hover:bg-dark-hover dark:hover:text-dark-text light:text-light-textDim light:hover:bg-light-hover light:hover:text-light-text"
       >
         <Download size={13} />
@@ -58,6 +74,7 @@ export function Toolbar({ isDirty, onRun, onStop, isRunning, onSave, onLoad, ext
       <button
         onClick={onLoad}
         title="JSONからインポート"
+        aria-label="JSONからインポート"
         className="flex items-center gap-1 rounded px-2.5 py-1 text-xs text-dark-textDim transition-colors hover:bg-dark-hover hover:text-dark-text dark:text-dark-textDim dark:hover:bg-dark-hover dark:hover:text-dark-text light:text-light-textDim light:hover:bg-light-hover light:hover:text-light-text"
       >
         <FolderOpen size={13} />

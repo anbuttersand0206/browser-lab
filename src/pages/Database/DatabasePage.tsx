@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useNavigate } from 'react-router-dom'
-import { Database, Sun, Moon, ArrowLeft, Play, ChevronRight, HelpCircle } from 'lucide-react'
+import { Database, Sun, Moon, ArrowLeft, Play, ChevronRight, HelpCircle, CheckCircle2 } from 'lucide-react'
 import { usePGLite, type QueryResult } from '../../hooks/usePGLite'
 import { useUnsavedGuard } from '../../hooks/useUnsavedGuard'
 import { useJsonIO } from '../../hooks/useJsonIO'
@@ -16,6 +16,7 @@ import { UnsavedModal } from '../../components/UnsavedModal/UnsavedModal'
 import { ResourceConsentModal, type ResourceSpec } from '../../components/ResourceConsentModal/ResourceConsentModal'
 import { Toolbar } from '../../components/Toolbar/Toolbar'
 import { HelpModal, EDITOR_COMMON_SHORTCUTS, DB_SHORTCUTS } from '../../components/HelpModal/HelpModal'
+import { useCompletedScenarios } from '../../hooks/useCompletedScenarios'
 import { databaseScenarios, type DatabaseScenario } from '../../scenarios/database'
 import { validateDatabaseExport, extractDatabaseSnapshot } from '../../lib/importValidator'
 
@@ -323,6 +324,19 @@ export default function DatabasePage() {
 
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [isSchemaViewOpen, setIsSchemaViewOpen] = useState(false)
+  const { markCompleted, isCompleted } = useCompletedScenarios()
+
+  // シナリオの初期 SQL にリセットする。
+  // 誤操作防止のため window.confirm で確認を取ってから実行する。
+  const handleReset = () => {
+    const confirmed = window.confirm(
+      `シナリオ「${scenario.title}」の初期 SQL に戻します。\n現在の編集内容は失われます。よろしいですか？`
+    )
+    if (!confirmed) return
+    setSql(scenario.initialSQL)
+    setSavedSql(scenario.initialSQL)
+    setLatestResult([])
+  }
 
   return (
     <div className="flex h-full flex-col bg-dark-bg dark:bg-dark-bg light:bg-light-bg">
@@ -385,7 +399,10 @@ export default function DatabasePage() {
                 }`}
               >
                 <ChevronRight size={12} className="mt-0.5 flex-shrink-0 text-green-400" />
-                <span className="leading-relaxed">{s.title}</span>
+                <span className="flex-1 leading-relaxed">{s.title}</span>
+                {isCompleted('database', s.id) && (
+                  <CheckCircle2 size={12} className="mt-0.5 flex-shrink-0 text-green-400" aria-label="完了済み" />
+                )}
               </button>
             ))}
           </div>
@@ -411,6 +428,7 @@ export default function DatabasePage() {
             isDirty={isDirty}
             onSave={handleExport}
             onLoad={handleImport}
+            onReset={handleReset}
             extra={
               <button
                 onClick={executeSql}
@@ -487,6 +505,7 @@ export default function DatabasePage() {
             description={scenario.description}
             hints={scenario.hints}
             solution={scenario.solution}
+            onSolutionViewed={() => markCompleted('database', scenario.id)}
           />
         </div>
       </div>

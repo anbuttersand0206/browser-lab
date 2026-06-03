@@ -25,6 +25,7 @@ export const EDITOR_COMMON_SHORTCUTS: ShortcutGroup = {
   label: 'エディタ共通',
   shortcuts: [
     { description: 'JSONで保存',        mac: 'Cmd + S',         other: 'Ctrl + S' },
+    { description: 'テキスト検索',      mac: 'Cmd + F',         other: 'Ctrl + F' },
     { description: '元に戻す',          mac: 'Cmd + Z',         other: 'Ctrl + Z' },
     { description: 'やり直す',          mac: 'Cmd + Shift + Z', other: 'Ctrl + Y' },
     { description: '選択行をインデント', mac: 'Tab',             other: 'Tab' },

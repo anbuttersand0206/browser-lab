@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useNavigate } from 'react-router-dom'
-import { Zap, Sun, Moon, ArrowLeft, ChevronRight, HelpCircle, Plus, Check, X } from 'lucide-react'
+import { Zap, Sun, Moon, ArrowLeft, ChevronRight, HelpCircle, Plus, Check, X, CheckCircle2 } from 'lucide-react'
 import { useWebContainer, type ContainerStatus } from '../../hooks/useWebContainer'
 import { useUnsavedGuard } from '../../hooks/useUnsavedGuard'
 import { useJsonIO } from '../../hooks/useJsonIO'
@@ -16,6 +16,7 @@ import { HelpModal, EDITOR_COMMON_SHORTCUTS } from '../../components/HelpModal/H
 import { programmingScenarios, type ProgrammingScenario } from '../../scenarios/programming'
 import { validateProgrammingExport, extractDatabaseSnapshot } from '../../lib/importValidator'
 import { getPackageCompletions } from '../../lib/tsCompletions'
+import { useCompletedScenarios } from '../../hooks/useCompletedScenarios'
 
 // リサイズ可能な3ペインのサイズをまとめて管理する
 interface PaneSizes {
@@ -296,6 +297,20 @@ export default function ProgrammingPage() {
   }, [debouncedScenarioId, debouncedFiles])
 
   const [isHelpOpen, setIsHelpOpen] = useState(false)
+  const { markCompleted, isCompleted } = useCompletedScenarios()
+
+  // シナリオの初期ファイルにリセットする。
+  // undo 履歴も消えるため、誤操作防止のために window.confirm で確認を取る。
+  const handleReset = () => {
+    const confirmed = window.confirm(
+      `シナリオ「${scenario.title}」の初期コードに戻します。\n現在の編集内容は失われます。よろしいですか？`
+    )
+    if (!confirmed) return
+    setFiles(scenario.files)
+    setSavedFiles(scenario.files)
+    setActiveFile('index.ts')
+    clearOutput()
+  }
 
   // ファイル作成UI の表示フラグと入力中のファイル名
   const [isAddingFile, setIsAddingFile] = useState(false)
@@ -436,7 +451,10 @@ export default function ProgrammingPage() {
                 }`}
               >
                 <ChevronRight size={12} className="mt-0.5 flex-shrink-0 text-blue-400" />
-                <span className="leading-relaxed">{s.title}</span>
+                <span className="flex-1 leading-relaxed">{s.title}</span>
+                {isCompleted('programming', s.id) && (
+                  <CheckCircle2 size={12} className="mt-0.5 flex-shrink-0 text-green-400" aria-label="完了済み" />
+                )}
               </button>
             ))}
           </div>
@@ -535,6 +553,7 @@ export default function ProgrammingPage() {
             isRunning={isRunning}
             onSave={handleExport}
             onLoad={handleImport}
+            onReset={handleReset}
           />
 
           <div className="flex-1 overflow-hidden">
@@ -580,6 +599,7 @@ export default function ProgrammingPage() {
             description={scenario.description}
             hints={scenario.hints}
             solution={scenario.solution}
+            onSolutionViewed={() => markCompleted('programming', scenario.id)}
           />
         </div>
       </div>

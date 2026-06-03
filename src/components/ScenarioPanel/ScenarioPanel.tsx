@@ -5,6 +5,9 @@ interface ScenarioPanelProps {
   description: string
   hints: string[]
   solution: string | Record<string, string>
+  // 模範解答を確認表示したとき（confirming → visible の遷移）に呼ばれるコールバック。
+  // シナリオ完了マークを付けるために親コンポーネントが使う。
+  onSolutionViewed?: () => void
 }
 
 type PanelTab = 'problem' | 'hints' | 'solution'
@@ -18,7 +21,7 @@ const PANEL_TABS: { id: PanelTab; label: string }[] = [
   { id: 'solution', label: '解答例' },
 ]
 
-export function ScenarioPanel({ title, description, hints, solution }: ScenarioPanelProps) {
+export function ScenarioPanel({ title, description, hints, solution, onSolutionViewed }: ScenarioPanelProps) {
   const [activeTab, setActiveTab] = useState<PanelTab>('problem')
   const [solutionState, setSolutionState] = useState<SolutionState>('hidden')
 
@@ -152,7 +155,11 @@ export function ScenarioPanel({ title, description, hints, solution }: ScenarioP
                     やはりやめる
                   </button>
                   <button
-                    onClick={() => setSolutionState('visible')}
+                    onClick={() => {
+                      setSolutionState('visible')
+                      // 解答を確認したことを親に通知してシナリオ完了マークを付ける
+                      onSolutionViewed?.()
+                    }}
                     className="rounded-md bg-amber-600 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-amber-700"
                   >
                     はい、表示する
