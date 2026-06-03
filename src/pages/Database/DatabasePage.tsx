@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Database, Sun, Moon, ArrowLeft, Play, ChevronRight, HelpCircle, CheckCircle2, AlignLeft } from 'lucide-react'
+import { Database, Sun, Moon, ArrowLeft, Play, ChevronRight, HelpCircle, CheckCircle2, AlignLeft, Languages } from 'lucide-react'
 import { usePGLite, type QueryResult } from '../../hooks/usePGLite'
 import { useUnsavedGuard } from '../../hooks/useUnsavedGuard'
 import { useJsonIO } from '../../hooks/useJsonIO'
@@ -13,9 +13,10 @@ import { QueryHistory } from '../../components/DBClient/QueryHistory/QueryHistor
 import { SchemaView } from '../../components/DBClient/SchemaView/SchemaView'
 import { ScenarioPanel } from '../../components/ScenarioPanel/ScenarioPanel'
 import { UnsavedModal } from '../../components/UnsavedModal/UnsavedModal'
-import { ResourceConsentModal, type ResourceSpec } from '../../components/ResourceConsentModal/ResourceConsentModal'
+import { ResourceConsentModal } from '../../components/ResourceConsentModal/ResourceConsentModal'
 import { Toolbar } from '../../components/Toolbar/Toolbar'
-import { HelpModal, EDITOR_COMMON_SHORTCUTS, DB_SHORTCUTS } from '../../components/HelpModal/HelpModal'
+import { HelpModal } from '../../components/HelpModal/HelpModal'
+import { useI18n } from '../../i18n'
 import { useCompletedScenarios } from '../../hooks/useCompletedScenarios'
 import { databaseScenarios, type DatabaseScenario } from '../../scenarios/database'
 import { validateDatabaseExport, extractDatabaseSnapshot } from '../../lib/importValidator'
@@ -110,30 +111,9 @@ function restoreDbProgress(): { scenario: DatabaseScenario; scenarioContents: Re
   }
 }
 
-// PGLite のリソース仕様（同意モーダルに渡す）
-// ビルド出力からの実測値: postgres-*.wasm ≈ 8 MB、postgres-*.data ≈ 5 MB
-const PGLITE_RESOURCES: ResourceSpec[] = [
-  {
-    name: 'ブラウザ内 PostgreSQL（PGLite）',
-    description:
-      'PostgreSQL を WebAssembly でブラウザ内で動作させます。インストール不要で本物の SQL を実行できます。',
-    estimatedMemoryRange: '50〜150 MB',
-    estimatedDownloadSize: '約 13 MB（WASM + データファイル）',
-    cautions: [
-      'ページをリロードするとデータベースの内容は消去されます',
-      'JSON エクスポートでクエリ履歴を手元に保存できます',
-    ],
-  },
-]
-
-const DATABASE_RECOMMENDATIONS = [
-  '空きメモリ 2 GB 以上を推奨します',
-  '他のブラウザタブを閉じると動作が安定します',
-  'ページリロード前にクエリを JSON エクスポートしてください',
-]
-
 export default function DatabasePage() {
   const navigate = useNavigate()
+  const { locale, setLocale, t } = useI18n()
   const { scenarioId: urlScenarioId } = useParams<{ scenarioId?: string }>()
   const { resolvedTheme, setTheme } = useTheme()
   const { exportJson, importJson } = useJsonIO()
@@ -230,17 +210,14 @@ export default function DatabasePage() {
       // databaseSnapshot を抽出し、現在のDBにテーブル・データを適用する。
       const snapshot = extractDatabaseSnapshot(raw)
       if (snapshot) {
-        const shouldApply = confirm(
-          'DBスナップショットが見つかりました。\n現在の DB に適用しますか？\n\n' +
-          '（CREATE TABLE IF NOT EXISTS で実行するため既存テーブルは上書きされません）'
-        )
+        const shouldApply = confirm(t.confirm.applySnapshot)
         if (shouldApply) {
           const statements = snapshot.split(';').map((s) => s.trim()).filter(Boolean)
           for (const stmt of statements) {
             await exec(stmt + ';')
           }
           await refreshTables()
-          alert('スナップショットを適用しました。')
+          alert(t.confirm.snapshotApplied)
         }
         return
       }
@@ -249,7 +226,7 @@ export default function DatabasePage() {
       // as キャストの代わりに型ガードでランタイム検証する。
       const result = validateDatabaseExport(raw)
       if (!result.ok) {
-        alert(`読み込みエラー: ${result.reason}`)
+        alert(t.confirm.importError(result.reason))
         return
       }
       if (result.data.currentEditorContent) {
@@ -411,10 +388,10 @@ export default function DatabasePage() {
     :                'bg-green-400'
 
   const dbStatusLabel =
-    !hasConsented ? '起動待機中'
-    : !ready       ? 'PGLite 初期化中...'
-    : dbError      ? 'エラー'
-    :                'PostgreSQL 稼働中'
+    !hasConsented ? t.status.idle
+    : !ready       ? t.status.pgInit
+    : dbError      ? t.status.pgError
+    :                t.status.pgRunning
 
   const isExecuteDisabled = !ready || isExecuting
 
@@ -446,9 +423,7 @@ export default function DatabasePage() {
   // シナリオの初期 SQL にリセットする。
   // 誤操作防止のため window.confirm で確認を取ってから実行する。
   const handleReset = () => {
-    const confirmed = window.confirm(
-      `シナリオ「${scenario.title}」の初期 SQL に戻します。\n現在の編集内容は失われます。よろしいですか？`
-    )
+    const confirmed = window.confirm(t.confirm.resetDb(scenario.title))
     if (!confirmed) return
     const initialSql = scenario.initialSQL
     updateSql(initialSql)
@@ -476,7 +451,7 @@ export default function DatabasePage() {
         <span className="text-dark-textDim">/</span>
         <span className="flex items-center gap-1.5 text-xs font-medium text-dark-text dark:text-dark-text light:text-light-text">
           <Database size={13} />
-          DB学習コース
+          {t.nav.dbCourse}
         </span>
         {isDirty && <span className="h-1.5 w-1.5 rounded-full bg-yellow-400" />}
 
@@ -489,15 +464,24 @@ export default function DatabasePage() {
 
         <button
           onClick={() => setIsHelpOpen(true)}
-          title="キーボードショートカット一覧"
-          aria-label="キーボードショートカット一覧を表示"
+          title={t.helpModal.title}
+          aria-label={t.helpModal.title}
           className="ml-2 rounded px-2 py-0.5 text-xs text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
         >
           <HelpCircle size={14} />
         </button>
+        {/* 言語切り替えボタン */}
+        <button
+          onClick={() => setLocale(locale === 'ja' ? 'en' : 'ja')}
+          aria-label={t.locale.switchLabel}
+          title={t.locale.switchLabel}
+          className="rounded px-2 py-0.5 text-xs text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
+        >
+          <Languages size={14} />
+        </button>
         <button
           onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-          aria-label={resolvedTheme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
+          aria-label={resolvedTheme === 'dark' ? t.theme.light : t.theme.dark}
           className="rounded px-2 py-0.5 text-xs text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
         >
           {resolvedTheme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
@@ -511,7 +495,7 @@ export default function DatabasePage() {
         >
           <div className="border-b border-dark-border dark:border-dark-border light:border-light-border">
             <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-              シナリオ
+              {t.sidebar.scenarios}
             </div>
             {databaseScenarios.map((s) => (
               <button
@@ -558,12 +542,12 @@ export default function DatabasePage() {
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={handleFormat}
-                  title="SQLを整形する（キーワード大文字化・主要節ごとに改行）"
-                  aria-label="SQLを整形"
+                  title={t.toolbar.formatTooltip}
+                  aria-label={t.toolbar.format}
                   className="flex items-center gap-1 rounded px-2.5 py-1 text-xs text-dark-textDim transition-colors hover:bg-dark-hover hover:text-dark-text dark:text-dark-textDim dark:hover:bg-dark-hover dark:hover:text-dark-text light:text-light-textDim light:hover:bg-light-hover light:hover:text-light-text"
                 >
                   <AlignLeft size={12} />
-                  整形
+                  {t.toolbar.format}
                 </button>
                 <button
                   onClick={executeSql}
@@ -573,17 +557,17 @@ export default function DatabasePage() {
                       ? 'cursor-not-allowed bg-gray-600 text-gray-400'
                       : 'bg-green-600 text-white hover:bg-green-700'
                   }`}
-                  title="Ctrl+Enter でも実行できます"
+                  title={t.toolbar.execute}
                 >
                   {isExecuting ? (
                     <>
                       <span className="inline-block h-2 w-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                      実行中...
+                      {t.toolbar.executing}
                     </>
                   ) : (
                     <>
                       <Play size={12} />
-                      実行 (Ctrl+Enter)
+                      {t.toolbar.execute}
                     </>
                   )}
                 </button>
@@ -597,10 +581,10 @@ export default function DatabasePage() {
                 {hasConsented ? (
                   <>
                     <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    PostgreSQLを初期化しています...
+                    {t.status.initializingPostgres}
                   </>
                 ) : (
-                  <span>同意後に PostgreSQL を起動します</span>
+                  <span>{t.status.waitingForPostgres}</span>
                 )}
               </div>
             ) : (
@@ -610,7 +594,7 @@ export default function DatabasePage() {
                 onChange={updateSql}
                 language="sql"
                 onCtrlEnter={executeSql}
-                sqlTables={tables.map((t) => ({ name: t.name, columns: t.columns.map((c) => c.name) }))}
+                sqlTables={tables.map((tbl) => ({ name: tbl.name, columns: tbl.columns.map((c) => c.name) }))}
               />
             )}
           </div>
@@ -657,7 +641,7 @@ export default function DatabasePage() {
       <HelpModal
         isOpen={isHelpOpen}
         onClose={() => setIsHelpOpen(false)}
-        groups={[EDITOR_COMMON_SHORTCUTS, DB_SHORTCUTS]}
+        groups={[t.shortcuts.editorCommon, t.shortcuts.db]}
       />
 
       <SchemaView
@@ -671,8 +655,8 @@ export default function DatabasePage() {
       {!hasConsented && (
         <ResourceConsentModal
           courseName="DB 学習コース"
-          resources={PGLITE_RESOURCES}
-          recommendations={DATABASE_RECOMMENDATIONS}
+          resources={[t.resources.pglite]}
+          recommendations={t.recommendations.database}
           onAccept={() => setHasConsented(true)}
           onCancel={() => navigate('/')}
         />
@@ -684,11 +668,11 @@ export default function DatabasePage() {
           type="button"
           onClick={() => setShowClearNotification(false)}
           className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-lg border border-green-500/50 bg-green-500/15 px-4 py-3 text-sm font-medium text-green-400 shadow-lg transition-colors hover:bg-green-500/25"
+          aria-label={t.clearNotification}
           aria-live="polite"
-          aria-label="シナリオクリア通知（クリックで閉じる）"
         >
           <CheckCircle2 size={16} />
-          シナリオクリア！お疲れ様でした 🎉
+          {t.clearNotification}
         </button>
       )}
     </div>

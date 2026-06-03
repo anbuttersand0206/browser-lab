@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useI18n } from '../../i18n'
 
 interface ConsoleProps {
   output: string[]
@@ -9,8 +10,7 @@ interface ConsoleProps {
 }
 
 // アクティブなタブの union 型。
-// isPreviewVisible: boolean のようなフラグ管理ではなく、
-// 取りうる状態を型で列挙することで不正な状態（両方 true 等）を型レベルで排除する。
+// boolean フラグ管理ではなく、取りうる状態を型で列挙することで不正な状態を型レベルで排除する。
 type ConsoleTab = 'console' | 'preview'
 
 // システムが付与するプレフィックスで行の種別を判定して色分けする。
@@ -25,6 +25,7 @@ function getLineColor(line: string): string {
 }
 
 export function Console({ output, onClear, serverUrl }: ConsoleProps) {
+  const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<ConsoleTab>('console')
 
   // serverUrl が設定されたらプレビュータブに自動切り替えする。
@@ -52,7 +53,7 @@ export function Console({ output, onClear, serverUrl }: ConsoleProps) {
                 : 'text-dark-textDim hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text'
             }`}
           >
-            コンソール
+            {t.console.consoleTab}
           </button>
           {serverUrl && (
             <button
@@ -67,7 +68,7 @@ export function Console({ output, onClear, serverUrl }: ConsoleProps) {
             >
               {/* サーバーが起動中であることをインジケーターで示す */}
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-400" />
-              プレビュー
+              {t.console.previewTab}
             </button>
           )}
         </div>
@@ -77,10 +78,10 @@ export function Console({ output, onClear, serverUrl }: ConsoleProps) {
         {activeTab === 'console' && (
           <button
             onClick={onClear}
-            aria-label="コンソール出力をクリア"
+            aria-label={t.console.clearAriaLabel}
             className="text-xs text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
           >
-            クリア
+            {t.console.clearButton}
           </button>
         )}
       </div>
@@ -89,7 +90,7 @@ export function Console({ output, onClear, serverUrl }: ConsoleProps) {
         <div className="flex-1 overflow-auto p-2 font-mono text-xs">
           {output.length === 0 ? (
             <div className="text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-              実行ボタンを押すと出力がここに表示されます
+              {t.console.emptyMessage}
             </div>
           ) : (
             output.map((line, i) => (
@@ -111,7 +112,7 @@ export function Console({ output, onClear, serverUrl }: ConsoleProps) {
         <iframe
           src={serverUrl}
           className="flex-1 w-full border-0 bg-white"
-          title="アプリプレビュー"
+          title={t.console.previewTab}
           allow="cross-origin-isolated"
         />
       )}

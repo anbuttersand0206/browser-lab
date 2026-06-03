@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Zap, Sun, Moon, ArrowLeft, ChevronRight, HelpCircle, Plus, Check, X, CheckCircle2 } from 'lucide-react'
+import { Zap, Sun, Moon, ArrowLeft, ChevronRight, HelpCircle, Plus, Check, X, CheckCircle2, Languages } from 'lucide-react'
 import { useWebContainer, type ContainerStatus } from '../../hooks/useWebContainer'
 import { useUnsavedGuard } from '../../hooks/useUnsavedGuard'
 import { useJsonIO } from '../../hooks/useJsonIO'
@@ -10,9 +10,10 @@ import { CodeEditor } from '../../components/Editor/CodeEditor'
 import { Console } from '../../components/Console/Console'
 import { ScenarioPanel } from '../../components/ScenarioPanel/ScenarioPanel'
 import { UnsavedModal } from '../../components/UnsavedModal/UnsavedModal'
-import { ResourceConsentModal, type ResourceSpec } from '../../components/ResourceConsentModal/ResourceConsentModal'
+import { ResourceConsentModal } from '../../components/ResourceConsentModal/ResourceConsentModal'
 import { Toolbar } from '../../components/Toolbar/Toolbar'
-import { HelpModal, EDITOR_COMMON_SHORTCUTS } from '../../components/HelpModal/HelpModal'
+import { HelpModal } from '../../components/HelpModal/HelpModal'
+import { useI18n } from '../../i18n'
 import { programmingScenarios, type ProgrammingScenario } from '../../scenarios/programming'
 import { validateProgrammingExport, extractDatabaseSnapshot } from '../../lib/importValidator'
 import { getPackageCompletions } from '../../lib/tsCompletions'
@@ -145,41 +146,11 @@ function getStatusDotClass(status: ContainerStatus): string {
   return 'bg-gray-500'
 }
 
-function getStatusLabel(status: ContainerStatus, hasConsented: boolean): string {
-  // 同意前は「起動待機中」を表示し、意図せず起動していないことをユーザーに示す
-  if (!hasConsented) return '起動待機中'
-  if (status === 'booting') return 'WebContainer 起動中...'
-  if (status === 'running') return '実行中'
-  if (status === 'error') return 'エラー'
-  return '準備完了'
-}
-
-// WebContainers のリソース仕様（同意モーダルに渡す）
-const WEBCONTAINER_RESOURCES: ResourceSpec[] = [
-  {
-    name: 'Node.js 実行環境（WebContainers）',
-    description:
-      'ブラウザ内で完全な Node.js が動作します。npm install から実行まで、すべてブラウザ内で完結します。',
-    estimatedMemoryRange: '200〜500 MB',
-    estimatedDownloadSize: null,
-    cautions: [
-      '初回 npm install に数秒〜数十秒かかります',
-      'npm パッケージのダウンロードにネットワーク接続が必要です',
-      'シナリオを切り替えるたびに npm install が走ります',
-    ],
-  },
-]
-
-const PROGRAMMING_RECOMMENDATIONS = [
-  '空きメモリ 4 GB 以上を推奨します',
-  '安定したネットワーク接続を推奨します（npm install に使用）',
-  '他のブラウザタブを閉じると動作が安定します',
-]
-
 export default function ProgrammingPage() {
   const navigate = useNavigate()
   const { scenarioId: urlScenarioId } = useParams<{ scenarioId?: string }>()
   const { resolvedTheme, setTheme } = useTheme()
+  const { locale, setLocale, t } = useI18n()
   const { exportJson, importJson } = useJsonIO()
 
   // ユーザーがメモリ消費への同意を与えるまで WebContainers を起動しない。
@@ -267,7 +238,7 @@ export default function ProgrammingPage() {
         const nextFiles = { ...files, 'seed.sql': snapshot }
         updateFiles(nextFiles)
         setSavedFiles(nextFiles)
-        alert('DBスナップショットを seed.sql として追加しました。\n「実行」するとDBが復元された状態でコードが動きます。')
+        alert(t.confirm.snapshotAdded)
         return
       }
 
@@ -275,7 +246,7 @@ export default function ProgrammingPage() {
       // as キャストの代わりに型ガードでランタイム検証する。
       const result = validateProgrammingExport(raw)
       if (!result.ok) {
-        alert(`読み込みエラー: ${result.reason}`)
+        alert(t.confirm.importError(result.reason))
         return
       }
       if (Object.keys(result.data.files).length > 0) {
@@ -424,7 +395,7 @@ export default function ProgrammingPage() {
   // undo 履歴も消えるため、誤操作防止のために window.confirm で確認を取る。
   const handleReset = () => {
     const confirmed = window.confirm(
-      `シナリオ「${scenario.title}」の初期コードに戻します。\n現在の編集内容は失われます。よろしいですか？`
+      t.confirm.resetProg(scenario.title)
     )
     if (!confirmed) return
     updateFiles(scenario.files)
@@ -507,7 +478,12 @@ export default function ProgrammingPage() {
   // ステータスバー表示値を説明変数として先に計算し、JSX 内の条件式を減らす
   const statusTextColor = getStatusTextColor(status)
   const statusDotClass = getStatusDotClass(status)
-  const statusLabel = getStatusLabel(status, hasConsented)
+  // ステータス文字列は翻訳対応のために t から参照する
+  const statusLabel = !hasConsented ? t.status.idle
+    : status === 'booting' ? t.status.wcBooting
+    : status === 'running' ? t.status.wcRunning
+    : status === 'error'   ? t.status.wcError
+    :                        t.status.wcReady
 
   return (
     <div className="flex h-full flex-col bg-dark-bg dark:bg-dark-bg light:bg-light-bg">
@@ -522,7 +498,7 @@ export default function ProgrammingPage() {
         <span className="text-dark-textDim">/</span>
         <span className="flex items-center gap-1.5 text-xs font-medium text-dark-text dark:text-dark-text light:text-light-text">
           <Zap size={13} />
-          プログラミング学習
+          {t.nav.programmingCourse}
         </span>
         {isDirty && <span className="h-1.5 w-1.5 rounded-full bg-yellow-400" />}
 
@@ -535,15 +511,24 @@ export default function ProgrammingPage() {
 
         <button
           onClick={() => setIsHelpOpen(true)}
-          title="キーボードショートカット一覧"
-          aria-label="キーボードショートカット一覧を表示"
+          title={t.helpModal.title}
+          aria-label={t.helpModal.title}
           className="ml-2 rounded px-2 py-0.5 text-xs text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
         >
           <HelpCircle size={14} />
         </button>
+        {/* 言語切り替えボタン */}
+        <button
+          onClick={() => setLocale(locale === 'ja' ? 'en' : 'ja')}
+          aria-label={t.locale.switchLabel}
+          title={t.locale.switchLabel}
+          className="rounded px-2 py-0.5 text-xs text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
+        >
+          <Languages size={14} />
+        </button>
         <button
           onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-          aria-label={resolvedTheme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'}
+          aria-label={resolvedTheme === 'dark' ? t.theme.light : t.theme.dark}
           className="rounded px-2 py-0.5 text-xs text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
         >
           {resolvedTheme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
@@ -557,7 +542,7 @@ export default function ProgrammingPage() {
         >
           <div className="border-b border-dark-border px-3 py-2 dark:border-dark-border light:border-light-border">
             <div className="text-xs font-semibold uppercase tracking-wider text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-              シナリオ
+              {t.sidebar.scenarios}
             </div>
           </div>
           <div className="flex-1 overflow-auto py-1">
@@ -584,13 +569,13 @@ export default function ProgrammingPage() {
             {/* ヘッダー行：「ファイル」ラベルと新規追加ボタン */}
             <div className="flex items-center px-3 py-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-                ファイル
+                {t.sidebar.files}
               </span>
               <button
                 type="button"
                 onClick={() => setIsAddingFile(true)}
-                aria-label="新しいファイルを追加"
-                title="新しいファイルを追加"
+                aria-label={t.sidebar.addFileAriaLabel}
+                title={t.sidebar.addFileTitle}
                 className="ml-auto rounded p-0.5 text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
               >
                 <Plus size={12} />
@@ -606,14 +591,14 @@ export default function ProgrammingPage() {
                   value={newFileName}
                   onChange={(e) => setNewFileName(e.target.value)}
                   onKeyDown={handleNewFileKeyDown}
-                  placeholder="filename.ts"
-                  aria-label="新しいファイル名"
+                  placeholder={t.sidebar.newFilePlaceholder}
+                  aria-label={t.sidebar.newFilePlaceholder}
                   className="flex-1 rounded border border-dark-border bg-dark-bg px-2 py-0.5 font-mono text-xs text-dark-text focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-dark-border dark:bg-dark-bg dark:text-dark-text light:border-light-border light:bg-white light:text-light-text"
                 />
                 <button
                   type="button"
                   onClick={handleAddFile}
-                  aria-label="ファイルを作成"
+                  aria-label={t.sidebar.createFileAriaLabel}
                   className="rounded p-0.5 text-green-400 transition-colors hover:text-green-300"
                 >
                   <Check size={12} />
@@ -621,7 +606,7 @@ export default function ProgrammingPage() {
                 <button
                   type="button"
                   onClick={() => { setIsAddingFile(false); setNewFileName('') }}
-                  aria-label="キャンセル"
+                  aria-label={t.sidebar.cancelAriaLabel}
                   className="rounded p-0.5 text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
                 >
                   <X size={12} />
@@ -681,7 +666,7 @@ export default function ProgrammingPage() {
             {isBooting ? (
               <div className="flex h-full items-center justify-center gap-3 text-sm text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
                 <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                WebContainer を起動しています...（初回は少し時間がかかります）
+                {t.status.wcBooting}
               </div>
             ) : (
               <CodeEditor
@@ -736,15 +721,15 @@ export default function ProgrammingPage() {
       <HelpModal
         isOpen={isHelpOpen}
         onClose={() => setIsHelpOpen(false)}
-        groups={[EDITOR_COMMON_SHORTCUTS]}
+        groups={[t.shortcuts.editorCommon]}
       />
 
       {/* 同意前はコース全体を覆うモーダルを表示し、WebContainers の起動をブロックする */}
       {!hasConsented && (
         <ResourceConsentModal
-          courseName="プログラミング学習コース"
-          resources={WEBCONTAINER_RESOURCES}
-          recommendations={PROGRAMMING_RECOMMENDATIONS}
+          courseName={t.nav.programmingCourse}
+          resources={[t.resources.webcontainer]}
+          recommendations={t.recommendations.programming}
           onAccept={() => setHasConsented(true)}
           onCancel={() => navigate('/')}
         />
@@ -756,11 +741,11 @@ export default function ProgrammingPage() {
           type="button"
           onClick={() => setShowClearNotification(false)}
           className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-lg border border-green-500/50 bg-green-500/15 px-4 py-3 text-sm font-medium text-green-400 shadow-lg transition-colors hover:bg-green-500/25"
+          aria-label={t.clearNotification}
           aria-live="polite"
-          aria-label="シナリオクリア通知（クリックで閉じる）"
         >
           <CheckCircle2 size={16} />
-          シナリオクリア！お疲れ様でした 🎉
+          {t.clearNotification}
         </button>
       )}
     </div>

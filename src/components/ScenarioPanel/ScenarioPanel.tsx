@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { computeLineDiff, summarizeDiff, type DiffLine } from '../../lib/simpleDiff'
+import { useI18n } from '../../i18n'
 
 interface ScenarioPanelProps {
   title: string
@@ -27,6 +28,7 @@ export function ScenarioPanel({
   currentContent,
   onSolutionViewed,
 }: ScenarioPanelProps) {
+  const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<PanelTab>('problem')
   const [solutionState, setSolutionState] = useState<SolutionState>('hidden')
 
@@ -38,10 +40,10 @@ export function ScenarioPanel({
   const hasDiffTab = currentContent !== undefined
 
   const PANEL_TABS: { id: PanelTab; label: string }[] = [
-    { id: 'problem', label: '問題文' },
-    { id: 'hints', label: 'ヒント' },
-    { id: 'solution', label: '解答例' },
-    ...(hasDiffTab ? [{ id: 'diff' as PanelTab, label: '差分' }] : []),
+    { id: 'problem', label: t.scenarioPanel.tabProblem },
+    { id: 'hints', label: t.scenarioPanel.tabHints(hints.length) },
+    { id: 'solution', label: t.scenarioPanel.tabSolution },
+    ...(hasDiffTab ? [{ id: 'diff' as PanelTab, label: t.scenarioPanel.tabDiff }] : []),
   ]
 
   const hasMoreHints = visibleHintCount < hints.length
@@ -55,17 +57,12 @@ export function ScenarioPanel({
           .map(([filename, code]) => `// === ${filename} ===\n${code}`)
           .join('\n\n')
 
-  const tabLabel = (tab: { id: PanelTab; label: string }) => {
-    if (tab.id === 'hints') return `${tab.label} (${hints.length})`
-    return tab.label
-  }
-
   return (
     <div className="flex h-full flex-col bg-dark-sidebar dark:bg-dark-sidebar light:bg-light-sidebar">
       {/* role="tablist" でタブグループをスクリーンリーダーに伝える */}
       <div
         role="tablist"
-        aria-label="シナリオパネル"
+        aria-label={t.scenarioPanel.ariaLabel}
         className="flex flex-shrink-0 border-b border-dark-border dark:border-dark-border light:border-light-border"
       >
         {PANEL_TABS.map((tab) => (
@@ -80,7 +77,7 @@ export function ScenarioPanel({
                 : 'text-dark-textDim hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text'
             }`}
           >
-            {tabLabel(tab)}
+            {tab.label}
           </button>
         ))}
       </div>
@@ -100,7 +97,7 @@ export function ScenarioPanel({
           <div className="space-y-3">
             {visibleHintCount === 0 && (
               <p className="text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-                まず自分で考えてみましょう。行き詰まったらヒントを少しずつ開きましょう。
+                {t.scenarioPanel.hintsPrompt}
               </p>
             )}
 
@@ -110,7 +107,7 @@ export function ScenarioPanel({
                 className="rounded-md border border-yellow-600/30 bg-yellow-600/10 p-3"
               >
                 <div className="mb-1 text-xs font-semibold text-yellow-400">
-                  ヒント {i + 1}
+                  {t.scenarioPanel.hintLabel(i)}
                 </div>
                 <div className="text-xs text-dark-text dark:text-dark-text light:text-light-text">
                   {hint}
@@ -123,13 +120,13 @@ export function ScenarioPanel({
                 onClick={() => setVisibleHintCount((prev) => prev + 1)}
                 className="w-full rounded-md border border-yellow-600/40 px-3 py-2 text-xs font-medium text-yellow-400 transition-colors hover:border-yellow-500/60 hover:bg-yellow-600/10"
               >
-                ヒント {visibleHintCount + 1} を見る ({visibleHintCount + 1}/{hints.length})
+                {t.scenarioPanel.hintRevealButton(visibleHintCount, hints.length)}
               </button>
             )}
 
             {allHintsRevealed && (
               <p className="text-center text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-                すべてのヒントを表示しました
+                {t.scenarioPanel.allHintsRevealed}
               </p>
             )}
           </div>
@@ -139,35 +136,34 @@ export function ScenarioPanel({
           <div>
             {solutionState === 'hidden' && (
               <div className="flex flex-col items-center gap-4 py-8">
-                <div className="text-4xl">🔒</div>
-                <p className="text-center text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-                  まず自分で解いてみましょう！<br />
-                  解答例を見る前にヒントを参考にしてください。
+                <div className="text-4xl">{t.scenarioPanel.solutionLock}</div>
+                <p className="text-center text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim whitespace-pre-line">
+                  {t.scenarioPanel.solutionLockedMessage}
                 </p>
                 <button
                   onClick={() => setSolutionState('confirming')}
                   className="rounded-md bg-blue-600 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-blue-700"
                 >
-                  解答例を表示する
+                  {t.scenarioPanel.showSolutionButton}
                 </button>
               </div>
             )}
 
             {solutionState === 'confirming' && (
               <div className="flex flex-col items-center gap-4 py-8">
-                <div className="text-4xl">⚠️</div>
+                <div className="text-4xl">{t.scenarioPanel.solutionConfirmIcon}</div>
                 <p className="text-center text-sm font-medium text-dark-text dark:text-dark-text light:text-light-text">
-                  本当に解答例を見ますか？
+                  {t.scenarioPanel.solutionConfirmTitle}
                 </p>
                 <p className="text-center text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-                  自力で解けそうならヒントをもう一度確認してみましょう。
+                  {t.scenarioPanel.solutionConfirmMessage}
                 </p>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setSolutionState('hidden')}
                     className="rounded-md border border-dark-border px-4 py-2 text-xs font-medium text-dark-textDim transition-colors hover:text-dark-text dark:border-dark-border dark:text-dark-textDim dark:hover:text-dark-text light:border-light-border light:text-light-textDim light:hover:text-light-text"
                   >
-                    やはりやめる
+                    {t.scenarioPanel.solutionCancelButton}
                   </button>
                   <button
                     onClick={() => {
@@ -177,7 +173,7 @@ export function ScenarioPanel({
                     }}
                     className="rounded-md bg-amber-600 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-amber-700"
                   >
-                    はい、表示する
+                    {t.scenarioPanel.solutionShowButton}
                   </button>
                 </div>
               </div>
@@ -186,12 +182,12 @@ export function ScenarioPanel({
             {solutionState === 'visible' && (
               <div>
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-green-400">解答例</span>
+                  <span className="text-xs font-semibold text-green-400">{t.scenarioPanel.solutionLabel}</span>
                   <button
                     onClick={() => setSolutionState('hidden')}
                     className="text-xs text-dark-textDim hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
                   >
-                    非表示にする
+                    {t.scenarioPanel.solutionHideButton}
                   </button>
                 </div>
                 <pre className="overflow-auto rounded-md bg-dark-bg p-3 text-xs text-dark-text dark:bg-dark-bg dark:text-dark-text light:bg-gray-100 light:text-light-text">
@@ -212,7 +208,6 @@ export function ScenarioPanel({
 
 // ----------------------------------------------------------------
 // 差分タブのコンテンツ
-// currentContent と solution を比較して unified diff 形式で表示する
 // ----------------------------------------------------------------
 
 interface DiffTabProps {
@@ -221,18 +216,18 @@ interface DiffTabProps {
 }
 
 function DiffTab({ currentContent, solution }: DiffTabProps) {
-  // 両方が string の場合はそのまま比較する（DBコース）
+  const { t } = useI18n()
+
   if (typeof currentContent === 'string' && typeof solution === 'string') {
     return (
       <SingleFileDiff
-        label="エディタの内容 vs 解答"
+        label={t.scenarioPanel.diffVsLabel}
         current={currentContent}
         expected={solution}
       />
     )
   }
 
-  // 両方が Record の場合はファイルごとに比較する（プログラミングコース）
   if (typeof currentContent === 'object' && typeof solution === 'object') {
     const solutionFiles = Object.entries(solution)
     return (
@@ -249,10 +244,9 @@ function DiffTab({ currentContent, solution }: DiffTabProps) {
     )
   }
 
-  // 型の組み合わせが合わない場合（通常は発生しないが型安全のため）
   return (
     <p className="text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-      差分を計算できませんでした。
+      {useI18n().t.scenarioPanel.diffError}
     </p>
   )
 }
@@ -268,15 +262,15 @@ interface SingleFileDiffProps {
 }
 
 function SingleFileDiff({ label, current, expected }: SingleFileDiffProps) {
+  const { t } = useI18n()
   const diffLines = computeLineDiff(current, expected)
 
-  // ファイルが長すぎて LCS 計算をスキップした場合
   if (diffLines === null) {
     return (
       <div className="rounded-md border border-dark-border p-3">
         <div className="mb-2 text-xs font-semibold text-dark-textDim">{label}</div>
         <p className="text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-          ファイルが長すぎるため差分を計算できません。
+          {t.scenarioPanel.diffTooLong}
         </p>
       </div>
     )
@@ -295,29 +289,23 @@ function SingleFileDiff({ label, current, expected }: SingleFileDiffProps) {
         <div className="ml-auto flex gap-2 text-xs">
           {hasChanges ? (
             <>
-              {removed > 0 && (
-                <span className="text-red-400">−{removed}行</span>
-              )}
-              {added > 0 && (
-                <span className="text-green-400">+{added}行</span>
-              )}
+              {removed > 0 && <span className="text-red-400">{t.scenarioPanel.diffRemoved(removed)}</span>}
+              {added > 0 && <span className="text-green-400">{t.scenarioPanel.diffAdded(added)}</span>}
               <span className="text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-                ({equal}行一致)
+                {t.scenarioPanel.diffEqual(equal)}
               </span>
             </>
           ) : (
-            <span className="text-green-400">解答と一致 ✓</span>
+            <span className="text-green-400">{t.scenarioPanel.diffMatches}</span>
           )}
         </div>
       </div>
 
       {hasChanges ? (
-        // 差分がある場合: unified diff 形式で表示する
-        // 変更のない行は連続して省略して変更行周辺だけを見せる
         <DiffLines lines={diffLines} />
       ) : (
         <div className="px-3 py-4 text-center text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-          このファイルは解答と完全に一致しています。
+          {t.scenarioPanel.diffMatchesMessage}
         </div>
       )}
     </div>
@@ -336,19 +324,15 @@ interface DiffLinesProps {
 }
 
 function DiffLines({ lines }: DiffLinesProps) {
-  // 変更のある行（added / removed）のインデックスセット
   const changedIndices = new Set(
     lines.flatMap((line, i) => (line.kind !== 'equal' ? [i] : []))
   )
 
-  // 表示対象インデックス: 変更行 ± CONTEXT_LINES の範囲
   const visibleIndices = new Set<number>()
   for (const idx of changedIndices) {
     for (let d = -CONTEXT_LINES; d <= CONTEXT_LINES; d++) {
       const target = idx + d
-      if (target >= 0 && target < lines.length) {
-        visibleIndices.add(target)
-      }
+      if (target >= 0 && target < lines.length) visibleIndices.add(target)
     }
   }
 
@@ -358,7 +342,6 @@ function DiffLines({ lines }: DiffLinesProps) {
   for (let i = 0; i < lines.length; i++) {
     if (!visibleIndices.has(i)) continue
 
-    // 省略された行がある場合に区切り線を表示する
     if (prevIdx !== -1 && i > prevIdx + 1) {
       elements.push(
         <div key={`gap-${i}`} className="border-y border-dark-border/50 px-3 py-0.5 text-xs text-dark-textDim dark:border-dark-border/50 light:border-light-border">
@@ -381,7 +364,6 @@ function DiffLines({ lines }: DiffLinesProps) {
 function DiffLineRow({ line }: { line: DiffLine }) {
   const { kind, text, lineNo } = line
 
-  // 行の色・プレフィックスを kind に応じて決定する
   const rowClass =
     kind === 'added'
       ? 'bg-green-500/10 text-green-400'
@@ -389,12 +371,10 @@ function DiffLineRow({ line }: { line: DiffLine }) {
       ? 'bg-red-500/10 text-red-400'
       : 'text-dark-textDim dark:text-dark-textDim light:text-light-textDim'
 
-  const prefix =
-    kind === 'added' ? '+' : kind === 'removed' ? '-' : ' '
+  const prefix = kind === 'added' ? '+' : kind === 'removed' ? '-' : ' '
 
   return (
     <div className={`flex items-start gap-0 px-3 py-0 ${rowClass}`}>
-      {/* 行番号（等幅で揃える） */}
       <span className="mr-2 w-7 flex-shrink-0 select-none text-right opacity-50">
         {kind !== 'added' ? lineNo : ''}
       </span>
@@ -405,10 +385,9 @@ function DiffLineRow({ line }: { line: DiffLine }) {
 }
 
 // ----------------------------------------------------------------
-// マークダウンレンダラー（変更なし）
+// マークダウンレンダラー
 // ----------------------------------------------------------------
 
-// マークダウンのインラインコード（`backtick`）を <code> タグに変換する
 function renderInlineCode(text: string): React.ReactNode {
   const parts = text.split(/(`[^`]+`)/g)
   return (
@@ -429,8 +408,6 @@ function renderInlineCode(text: string): React.ReactNode {
   )
 }
 
-// シナリオ説明文のマークダウンをシンプルにレンダリングする。
-// 外部ライブラリを避けてバンドルサイズを抑えるための最小実装。
 function MarkdownRenderer({ text }: { text: string }) {
   const lines = text.split('\n')
   return (
@@ -458,13 +435,8 @@ function MarkdownRenderer({ text }: { text: string }) {
             </div>
           )
         }
-        if (line.startsWith('```')) {
-          // コードブロック記号は表示しない
-          return null
-        }
-        if (line.trim() === '') {
-          return <div key={i} className="h-2" />
-        }
+        if (line.startsWith('```')) return null
+        if (line.trim() === '') return <div key={i} className="h-2" />
         return <p key={i}>{renderInlineCode(line)}</p>
       })}
     </div>

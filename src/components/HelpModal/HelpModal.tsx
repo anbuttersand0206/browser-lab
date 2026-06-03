@@ -1,17 +1,11 @@
 import { useEffect } from 'react'
 import { X } from 'lucide-react'
+import type { ShortcutGroup } from '../../types/shortcut'
+import { useI18n } from '../../i18n'
 
-export interface ShortcutEntry {
-  description: string
-  // Mac と非Mac で表記が異なるため分けて保持する
-  mac: string
-  other: string
-}
-
-export interface ShortcutGroup {
-  label: string
-  shortcuts: ShortcutEntry[]
-}
+// ShortcutGroup / ShortcutEntry の型定義は src/types/shortcut.ts に集約している。
+// i18n と HelpModal の両方が参照するため、循環 import を防ぐために共通型ファイルに分離した。
+export type { ShortcutGroup, ShortcutEntry } from '../../types/shortcut'
 
 interface HelpModalProps {
   isOpen: boolean
@@ -19,31 +13,11 @@ interface HelpModalProps {
   groups: ShortcutGroup[]
 }
 
-// CodeMirror 6 の defaultKeymap・historyKeymap・indentWithTab から
-// 学習者がよく使うものだけを厳選している。全ショートカットは CM6 公式ドキュメントを参照。
-export const EDITOR_COMMON_SHORTCUTS: ShortcutGroup = {
-  label: 'エディタ共通',
-  shortcuts: [
-    { description: 'JSONで保存',        mac: 'Cmd + S',         other: 'Ctrl + S' },
-    { description: 'テキスト検索',      mac: 'Cmd + F',         other: 'Ctrl + F' },
-    { description: '元に戻す',          mac: 'Cmd + Z',         other: 'Ctrl + Z' },
-    { description: 'やり直す',          mac: 'Cmd + Shift + Z', other: 'Ctrl + Y' },
-    { description: '選択行をインデント', mac: 'Tab',             other: 'Tab' },
-    { description: 'インデント解除',    mac: 'Shift + Tab',     other: 'Shift + Tab' },
-    { description: '全選択',            mac: 'Cmd + A',         other: 'Ctrl + A' },
-  ],
-}
-
-export const DB_SHORTCUTS: ShortcutGroup = {
-  label: 'DB コース',
-  shortcuts: [
-    { description: 'SQL を実行する', mac: 'Cmd + Enter', other: 'Ctrl + Enter' },
-  ],
-}
-
 export function HelpModal({ isOpen, onClose, groups }: HelpModalProps) {
+  const { t } = useI18n()
+
   // ESC キーでモーダルを閉じる。
-  // ブラウザ標準のダイアログ（<dialog> 要素）と同等の操作感を提供するため。
+  // ブラウザ標準のダイアログと同等の操作感を提供するため。
   useEffect(() => {
     if (!isOpen) return
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -80,11 +54,11 @@ export function HelpModal({ isOpen, onClose, groups }: HelpModalProps) {
             id="help-modal-title"
             className="text-sm font-semibold text-dark-text dark:text-dark-text light:text-light-text"
           >
-            キーボードショートカット
+            {t.helpModal.title}
           </h2>
           <button
             onClick={onClose}
-            aria-label="ショートカット一覧を閉じる"
+            aria-label={t.helpModal.closeAriaLabel}
             className="rounded p-1 text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
           >
             <X size={16} />
@@ -117,7 +91,7 @@ export function HelpModal({ isOpen, onClose, groups }: HelpModalProps) {
         </div>
 
         <p className="mt-5 text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-          Esc またはオーバーレイクリックで閉じます
+          {t.helpModal.dismissHint}
         </p>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { HashRouter, Routes, Route } from 'react-router-dom'
 import { ThemeProvider } from './hooks/useTheme'
+import { I18nProvider } from './i18n'
 import TopPage from './pages/Top/TopPage'
 
 // ProgrammingPage と DatabasePage は重い依存（WebContainers / PGLite）を持つため
@@ -20,6 +21,7 @@ function PageLoadingFallback() {
 
 export default function App() {
   return (
+    <I18nProvider>
     <ThemeProvider>
       <HashRouter>
         <Suspense fallback={<PageLoadingFallback />}>
@@ -32,5 +34,6 @@ export default function App() {
         </Suspense>
       </HashRouter>
     </ThemeProvider>
+    </I18nProvider>
   )
 }

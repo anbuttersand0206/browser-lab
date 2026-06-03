@@ -1,4 +1,5 @@
 import { AlertTriangle, Check, ArrowLeft, ArrowRight } from 'lucide-react'
+import { useI18n } from '../../i18n'
 
 /** リソース同意モーダルに表示する1つのリソース項目の定義 */
 export interface ResourceSpec {
@@ -11,7 +12,7 @@ export interface ResourceSpec {
   /** ダウンロードが発生する場合のサイズ表示文字列。null の場合は非表示 */
   estimatedDownloadSize: string | null
   /** ユーザーが事前に知っておくべき注意事項のリスト */
-  cautions: string[]
+  cautions: readonly string[]
 }
 
 interface ResourceConsentModalProps {
@@ -20,7 +21,7 @@ interface ResourceConsentModalProps {
   /** 起動対象のリソース仕様一覧 */
   resources: ResourceSpec[]
   /** 動作環境の推奨事項リスト */
-  recommendations: string[]
+  recommendations: readonly string[]
   /** 「同意して起動」ボタン押下時のコールバック */
   onAccept: () => void
   /** 「戻る」ボタン押下時のコールバック */
@@ -41,6 +42,8 @@ export function ResourceConsentModal({
   onAccept,
   onCancel,
 }: ResourceConsentModalProps) {
+  const { t } = useI18n()
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
       <div className="flex w-full max-w-xl flex-col rounded-xl border border-dark-border bg-dark-sidebar shadow-2xl dark:border-dark-border dark:bg-dark-sidebar light:border-light-border light:bg-light-sidebar">
@@ -50,7 +53,7 @@ export function ResourceConsentModal({
           <AlertTriangle size={22} className="flex-shrink-0 text-yellow-500" />
           <div>
             <h2 className="text-sm font-semibold text-dark-text dark:text-dark-text light:text-light-text">
-              起動前の確認
+              {t.consentModal.title}
             </h2>
             <p className="text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
               {courseName}
@@ -60,21 +63,20 @@ export function ResourceConsentModal({
 
         {/* 説明文 */}
         <p className="px-6 pt-4 text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-          このコースを起動すると、以下のリソースがブラウザのメモリにロードされます。
-          ご利用の端末のメモリが少ない場合、ブラウザの動作が重くなることがあります。
+          {t.consentModal.body}
         </p>
 
         {/* リソース一覧 */}
         <div className="mt-3 flex flex-col gap-2 px-6">
           {resources.map((resource) => (
-            <ResourceItem key={resource.name} resource={resource} />
+            <ResourceItem key={resource.name} resource={resource} memoryLabel={t.consentModal.memoryLabel} />
           ))}
         </div>
 
         {/* 推奨環境 */}
         <div className="mt-4 px-6">
           <p className="mb-1.5 text-xs font-medium text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-            推奨環境
+            {t.consentModal.recommendedEnv}
           </p>
           <ul className="space-y-0.5">
             {recommendations.map((rec) => (
@@ -93,13 +95,13 @@ export function ResourceConsentModal({
             className="flex items-center gap-1.5 rounded-md border border-dark-border px-4 py-2 text-xs font-medium text-dark-textDim transition-colors hover:bg-dark-hover hover:text-dark-text dark:border-dark-border dark:text-dark-textDim dark:hover:bg-dark-hover dark:hover:text-dark-text light:border-light-border light:text-light-textDim light:hover:bg-light-hover light:hover:text-light-text"
           >
             <ArrowLeft size={13} />
-            トップページに戻る
+            {t.consentModal.backButton}
           </button>
           <button
             onClick={onAccept}
             className="flex items-center gap-1.5 rounded-md bg-blue-600 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-blue-700"
           >
-            同意してコースを開始
+            {t.consentModal.acceptButton}
             <ArrowRight size={13} />
           </button>
         </div>
@@ -109,7 +111,7 @@ export function ResourceConsentModal({
 }
 
 /** リソース項目1件分の表示コンポーネント */
-function ResourceItem({ resource }: { resource: ResourceSpec }) {
+function ResourceItem({ resource, memoryLabel }: { resource: ResourceSpec; memoryLabel: string }) {
   const { name, description, estimatedMemoryRange, estimatedDownloadSize, cautions } = resource
 
   return (
@@ -123,7 +125,7 @@ function ResourceItem({ resource }: { resource: ResourceSpec }) {
             <MemoryBadge label="DL" value={estimatedDownloadSize} colorClass="text-blue-400" />
           )}
           {estimatedMemoryRange !== null && (
-            <MemoryBadge label="メモリ" value={estimatedMemoryRange} colorClass="text-yellow-400" />
+            <MemoryBadge label={memoryLabel} value={estimatedMemoryRange} colorClass="text-yellow-400" />
           )}
         </div>
       </div>
