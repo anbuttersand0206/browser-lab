@@ -1,27 +1,42 @@
 import { type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FlaskConical, Zap, Database, Sun, Moon, ArrowRight } from 'lucide-react'
+import { FlaskConical, Zap, Database, Sun, Moon, ArrowRight, Languages } from 'lucide-react'
 import { useTheme } from '../../hooks/useTheme'
+import { useI18n } from '../../i18n'
 
 export default function TopPage() {
   const navigate = useNavigate()
   const { resolvedTheme, setTheme } = useTheme()
+  const { locale, setLocale, t } = useI18n()
 
-  const toggleTheme = () => {
-    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
-  }
+  const toggleTheme = () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
+  // 現在のロケールとは反対のロケールに切り替える
+  const toggleLocale = () => setLocale(locale === 'ja' ? 'en' : 'ja')
 
   return (
     <div className="flex h-full flex-col items-center justify-center bg-dark-bg dark:bg-dark-bg light:bg-light-bg">
-      {/* テーマ切り替え */}
-      <div className="absolute right-4 top-4">
+      {/* ヘッダー右上のコントロール群 */}
+      <div className="absolute right-4 top-4 flex items-center gap-2">
+        {/* 言語切り替えボタン */}
+        <button
+          onClick={toggleLocale}
+          aria-label={t.locale.switchLabel}
+          title={t.locale.switchLabel}
+          className="flex items-center gap-1.5 rounded-md border border-dark-border bg-dark-sidebar px-3 py-1.5 text-xs text-dark-textDim transition-colors hover:bg-dark-hover hover:text-dark-text dark:border-dark-border dark:bg-dark-sidebar dark:text-dark-textDim dark:hover:bg-dark-hover dark:hover:text-dark-text light:border-light-border light:bg-light-sidebar light:text-light-textDim light:hover:bg-light-hover light:hover:text-light-text"
+        >
+          <Languages size={13} />
+          {/* 切り替え先の言語名を表示する（現在の言語ではなく次の言語を示す） */}
+          {locale === 'ja' ? t.locale.en : t.locale.ja}
+        </button>
+
+        {/* テーマ切り替えボタン */}
         <button
           onClick={toggleTheme}
           className="flex items-center gap-1.5 rounded-md border border-dark-border bg-dark-sidebar px-3 py-1.5 text-xs text-dark-textDim transition-colors hover:bg-dark-hover hover:text-dark-text dark:border-dark-border dark:bg-dark-sidebar dark:text-dark-textDim dark:hover:bg-dark-hover dark:hover:text-dark-text light:border-light-border light:bg-light-sidebar light:text-light-textDim light:hover:bg-light-hover light:hover:text-light-text"
         >
           {resolvedTheme === 'dark'
-            ? <><Sun size={13} /> ライト</>
-            : <><Moon size={13} /> ダーク</>
+            ? <><Sun size={13} /> {t.theme.light}</>
+            : <><Moon size={13} /> {t.theme.dark}</>
           }
         </button>
       </div>
@@ -35,7 +50,7 @@ export default function TopPage() {
           Browser Lab
         </h1>
         <p className="text-base text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-          インストール不要。ブラウザだけで動く学習プラットフォーム。
+          {t.top.subtitle}
         </p>
       </div>
 
@@ -43,25 +58,28 @@ export default function TopPage() {
       <div className="flex gap-6 px-6">
         <CourseCard
           icon={<Zap size={28} />}
-          title="プログラミング学習"
-          description="WebContainersを使ったNode.js / TypeScriptのリアルな実行環境。ブラウザ内でnpm installから実行まで。"
+          title={t.top.programmingCourse.title}
+          description={t.top.programmingCourse.description}
           badges={['TypeScript', 'Node.js', 'WebContainers']}
-          scenarios={['はじめてのTypeScript', '非同期処理をマスターする', 'ORMでDBを操作する']}
+          scenarios={t.top.programmingCourse.scenarios}
+          includedLabel={t.top.includedScenarios}
+          startLabel={t.top.startCourse}
           onClick={() => navigate('/programming')}
           color="blue"
         />
 
         <CourseCard
           icon={<Database size={28} />}
-          title="DB学習コース"
-          description="PGLiteを使ったブラウザ内PostgreSQL環境。本物のSQLを書いて、インデックスやJOINを体験する。"
+          title={t.top.dbCourse.title}
+          description={t.top.dbCourse.description}
           badges={['PostgreSQL', 'SQL', 'PGLite']}
-          scenarios={['はじめてのCRUD', 'インデックスの効果を見る', 'JOINを使いこなす']}
+          scenarios={t.top.dbCourse.scenarios}
+          includedLabel={t.top.includedScenarios}
+          startLabel={t.top.startCourse}
           onClick={() => navigate('/database')}
           color="green"
         />
       </div>
-
     </div>
   )
 }
@@ -71,12 +89,16 @@ interface CourseCardProps {
   title: string
   description: string
   badges: string[]
-  scenarios: string[]
+  scenarios: readonly string[]
+  includedLabel: string
+  startLabel: string
   onClick: () => void
   color: 'blue' | 'green'
 }
 
-function CourseCard({ icon, title, description, badges, scenarios, onClick, color }: CourseCardProps) {
+function CourseCard({
+  icon, title, description, badges, scenarios, includedLabel, startLabel, onClick, color,
+}: CourseCardProps) {
   const accent = color === 'blue' ? 'border-blue-500/40 hover:border-blue-500' : 'border-green-500/40 hover:border-green-500'
   const iconBg = color === 'blue' ? 'bg-blue-500/10 text-blue-400' : 'bg-green-500/10 text-green-400'
   const badgeBg = color === 'blue' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'
@@ -108,7 +130,7 @@ function CourseCard({ icon, title, description, badges, scenarios, onClick, colo
 
       <div className="border-t border-dark-border pt-4 dark:border-dark-border light:border-light-border">
         <div className="mb-1.5 text-xs font-medium text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-          収録シナリオ
+          {includedLabel}
         </div>
         {scenarios.map((s, i) => (
           <div key={s} className="flex items-center gap-2 py-0.5 text-xs text-dark-text dark:text-dark-text light:text-light-text">
@@ -119,7 +141,7 @@ function CourseCard({ icon, title, description, badges, scenarios, onClick, colo
       </div>
 
       <div className="mt-4 flex items-center justify-end gap-1 text-xs font-medium text-dark-textDim transition-colors group-hover:text-dark-text dark:text-dark-textDim dark:group-hover:text-dark-text light:text-light-textDim light:group-hover:text-light-text">
-        コースを開始
+        {startLabel}
         <ArrowRight size={13} />
       </div>
     </button>

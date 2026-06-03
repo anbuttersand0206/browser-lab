@@ -1,4 +1,5 @@
 import { AlertTriangle, Download, Trash2 } from 'lucide-react'
+import { useI18n } from '../../i18n'
 
 interface UnsavedModalProps {
   isOpen: boolean
@@ -8,6 +9,8 @@ interface UnsavedModalProps {
 }
 
 export function UnsavedModal({ isOpen, onSaveAndGo, onDiscardAndGo, onCancel }: UnsavedModalProps) {
+  const { t } = useI18n()
+
   if (!isOpen) return null
 
   return (
@@ -16,11 +19,11 @@ export function UnsavedModal({ isOpen, onSaveAndGo, onDiscardAndGo, onCancel }: 
         <div className="mb-4 flex items-center gap-3">
           <AlertTriangle size={22} className="flex-shrink-0 text-yellow-500" />
           <h2 className="text-lg font-semibold text-dark-text dark:text-dark-text light:text-light-text">
-            未保存の変更があります
+            {t.unsavedModal.title}
           </h2>
         </div>
         <p className="mb-6 text-sm text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
-          現在の編集内容はまだ保存されていません。このまま移動すると、変更内容が失われます。
+          {t.unsavedModal.message}
         </p>
         <div className="flex flex-col gap-2">
           <button
@@ -28,20 +31,20 @@ export function UnsavedModal({ isOpen, onSaveAndGo, onDiscardAndGo, onCancel }: 
             className="flex items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
           >
             <Download size={15} />
-            JSONで保存してから移動
+            {t.unsavedModal.saveAndGo}
           </button>
           <button
             onClick={onDiscardAndGo}
             className="flex items-center justify-center gap-2 rounded-md border border-dark-border bg-transparent px-4 py-2.5 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10 dark:border-dark-border light:border-light-border"
           >
             <Trash2 size={15} />
-            保存せずに移動
+            {t.unsavedModal.discardAndGo}
           </button>
           <button
             onClick={onCancel}
             className="flex items-center justify-center gap-2 rounded-md border border-dark-border bg-transparent px-4 py-2.5 text-sm font-medium text-dark-text transition-colors hover:bg-dark-hover dark:border-dark-border dark:text-dark-text dark:hover:bg-dark-hover light:border-light-border light:text-light-text light:hover:bg-light-hover"
           >
-            キャンセル（この画面に留まる）
+            {t.unsavedModal.cancel}
           </button>
         </div>
       </div>
