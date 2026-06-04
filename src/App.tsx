@@ -8,6 +8,7 @@ import TopPage from './pages/Top/TopPage'
 // 動的 import で遅延読み込みする。トップページの初期バンドルサイズを抑えるのが目的。
 const ProgrammingPage = lazy(() => import('./pages/Programming/ProgrammingPage'))
 const DatabasePage = lazy(() => import('./pages/Database/DatabasePage'))
+const AlgorithmPage = lazy(() => import('./pages/Algorithm/AlgorithmPage'))
 
 // ルーティング遷移中のフォールバック表示。
 // ページ全体を暗くして、コンテンツ描画前の白いフラッシュを防ぐ。
@@ -30,6 +31,7 @@ export default function App() {
             {/* :scenarioId? を末尾に付けてシナリオへの直接リンクを可能にする */}
             <Route path="/programming/:scenarioId?" element={<ProgrammingPage />} />
             <Route path="/database/:scenarioId?" element={<DatabasePage />} />
+            <Route path="/algorithm" element={<AlgorithmPage />} />
           </Routes>
         </Suspense>
       </HashRouter>
