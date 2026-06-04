@@ -50,6 +50,9 @@ export interface Translations {
       description: string
       scenarios: readonly string[]
     }
+    algorithmCourse: {
+      scenarios: readonly string[]
+    }
     includedScenarios: string
     startCourse: string
   }
@@ -206,6 +209,82 @@ export interface Translations {
     snapshotAdded: string
     importError: (reason: string) => string
   }
+
+  // アルゴリズム可視化コース
+  algorithm: AlgorithmTranslations
+}
+
+interface AlgoContent {
+  name: string
+  description: string
+  best: string
+  average: string
+  worst: string
+  space: string
+  useCases: string
+  visualGuide: string
+}
+
+interface AlgorithmTranslations {
+  pageTitle: string
+  pageSubtitle: string
+  selectPrompt: string
+  categories: {
+    sort: string
+    search: string
+    classic: string
+    ml: string
+  }
+  controls: {
+    play: string
+    pause: string
+    step: string
+    reset: string
+    speed: string
+    speedLabels: readonly string[]
+    arraySize: string
+    randomize: string
+    targetValue: string
+    numDisks: string
+    nValue: string
+    useMemo: string
+    inputA: string
+    inputB: string
+    numPoints: string
+    numClusters: string
+    learningRate: string
+    poolType: string
+    poolSize: string
+    max: string
+    avg: string
+    clickToToggleWall: string
+    clearWalls: string
+    kernelType: string
+    dataType: string
+    wallMode: string
+    startMode: string
+    goalMode: string
+  }
+  stepLog: {
+    title: string
+    empty: string
+    step: (n: number) => string
+  }
+  info: {
+    description: string
+    timeComplexity: string
+    bestCase: string
+    averageCase: string
+    worstCase: string
+    spaceComplexity: string
+    useCases: string
+    visualGuide: string
+  }
+  algorithms: Record<string, AlgoContent>
+  nav: {
+    backToTop: string
+    algorithmCourse: string
+  }
 }
 
 // ----------------------------------------------------------------
@@ -232,6 +311,9 @@ const ja: Translations = {
       title: 'DB学習コース',
       description: 'PGLiteを使ったブラウザ内PostgreSQL環境。本物のSQLを書いて、インデックスやJOINを体験する。',
       scenarios: ['はじめてのCRUD', 'インデックスの効果を見る', 'JOINを使いこなす'],
+    },
+    algorithmCourse: {
+      scenarios: ['ソート・探索アルゴリズム', 'ハノイの塔・フィボナッチ', '畳み込み・K-Means'],
     },
     includedScenarios: '収録シナリオ',
     startCourse: 'コースを開始',
@@ -402,6 +484,174 @@ const ja: Translations = {
       'DBスナップショットを seed.sql として追加しました。\n「実行」するとDBが復元された状態でコードが動きます。',
     importError: (reason) => `読み込みエラー: ${reason}`,
   },
+  algorithm: {
+    pageTitle: 'アルゴリズム可視化',
+    pageSubtitle: 'アルゴリズムの動きを目で見て、肌で感じる',
+    selectPrompt: '左のリストからアルゴリズムを選んでください',
+    categories: { sort: 'ソートアルゴリズム', search: '探索アルゴリズム', classic: 'クラシック', ml: '機械学習の基礎' },
+    controls: {
+      play: '再生', pause: '一時停止', step: 'ステップ実行', reset: 'リセット',
+      speed: '速度', speedLabels: ['最低速', '遅い', '標準', '速い', '最高速'],
+      arraySize: '配列サイズ', randomize: 'ランダム生成', targetValue: '探索値',
+      numDisks: '円盤の枚数', nValue: 'n の値', useMemo: 'メモ化を使う',
+      inputA: '値 A', inputB: '値 B', numPoints: '点の数',
+      numClusters: 'クラスター数 (k)', learningRate: '学習率',
+      poolType: 'プーリング種別', poolSize: 'ウィンドウサイズ',
+      max: '最大値', avg: '平均値',
+      clickToToggleWall: 'クリックで壁を切り替え', clearWalls: '壁をクリア',
+      kernelType: 'カーネル', dataType: '学習データ',
+      wallMode: '壁', startMode: 'スタート', goalMode: 'ゴール',
+    },
+    stepLog: {
+      title: 'ステップログ',
+      empty: '「再生」または「ステップ実行」を押すとログがここに表示されます',
+      step: (n) => `[Step ${n}]`,
+    },
+    info: {
+      description: '概要',
+      timeComplexity: '時間計算量',
+      bestCase: '最良', averageCase: '平均', worstCase: '最悪',
+      spaceComplexity: '空間計算量',
+      useCases: '実務でのユースケース',
+      visualGuide: 'どこを見るべきか',
+    },
+    nav: { backToTop: 'トップへ戻る', algorithmCourse: 'アルゴリズム可視化' },
+    algorithms: {
+      bubble: {
+        name: 'バブルソート',
+        description: '隣り合う要素を繰り返し比較・交換してソートする最もシンプルなアルゴリズム。バブルのように大きな値が末尾へ浮き上がる様子からこの名がついた。',
+        best: 'O(n)', average: 'O(n²)', worst: 'O(n²)', space: 'O(1)',
+        useCases: '教育目的・ほぼソート済みの小さな配列に有効。本番環境では使われない。',
+        visualGuide: '黄色のバーが比較中、赤がスワップ中、緑が確定済み。右端から順に緑が増えていく様子に注目。',
+      },
+      selection: {
+        name: '選択ソート',
+        description: '未ソート部分から最小値を選んで先頭と交換する。スワップ回数が O(n) で少ない点が特徴。',
+        best: 'O(n²)', average: 'O(n²)', worst: 'O(n²)', space: 'O(1)',
+        useCases: '書き込みコストが高いメモリ（フラッシュ等）でスワップ回数を抑えたいとき。',
+        visualGuide: '紫のバーが「現在の最小候補」を表す。左から順に緑（確定）が増えていく。',
+      },
+      insertion: {
+        name: '挿入ソート',
+        description: '手元のカードを整列するように、未ソート部分の先頭を取り出して適切な位置に挿入する。ほぼソート済みのデータに対してO(n)で動く。',
+        best: 'O(n)', average: 'O(n²)', worst: 'O(n²)', space: 'O(1)',
+        useCases: '小さな配列や、ほぼソート済みのデータ。TimeSortの内部でも使われる。',
+        visualGuide: '紫が挿入対象の要素。比較しながら左へ移動していく様子を観察。',
+      },
+      merge: {
+        name: 'マージソート',
+        description: '配列を半分に分割し、再帰的にソートして統合（マージ）する分割統治法。安定ソートで、最悪計算量も O(n log n) を保証する。',
+        best: 'O(n log n)', average: 'O(n log n)', worst: 'O(n log n)', space: 'O(n)',
+        useCases: '大規模データの外部ソート、安定ソートが必要な場面。',
+        visualGuide: 'アクティブな範囲（オレンジ枠）が分割・統合の対象。シアン色のバーがマージ中の要素。',
+      },
+      quick: {
+        name: 'クイックソート',
+        description: 'ピボット要素を基準に配列を分割し再帰的にソートする。平均 O(n log n) で実用上最速クラスだが、最悪ケースは O(n²)。',
+        best: 'O(n log n)', average: 'O(n log n)', worst: 'O(n²)', space: 'O(log n)',
+        useCases: '汎用ソート（多くの標準ライブラリで採用）。ランダムデータに強い。',
+        visualGuide: '紫のバーがピボット。ピボット以下が左側へ集まっていく分割の様子を観察。',
+      },
+      heap: {
+        name: 'ヒープソート',
+        description: '最大ヒープ（親が子より常に大きい木構造）を構築し、最大値を順に取り出してソートする。',
+        best: 'O(n log n)', average: 'O(n log n)', worst: 'O(n log n)', space: 'O(1)',
+        useCases: '最悪計算量を O(n log n) に保証したい場合。インプレースで空間効率が良い。',
+        visualGuide: '前半でヒープ構築、後半で最大値を末尾へ移動する2フェーズの動きに注目。',
+      },
+      linear: {
+        name: '線形探索',
+        description: '先頭から末尾まで順に比較する最もシンプルな探索。ソート不要で汎用性が高い。',
+        best: 'O(1)', average: 'O(n)', worst: 'O(n)', space: 'O(1)',
+        useCases: '未ソートの小さなデータ、1回だけ探索する場合。',
+        visualGuide: 'スキャン中の要素が黄色。目標値が見つかると緑に変わる。',
+      },
+      binary: {
+        name: '二分探索',
+        description: 'ソート済み配列を半分ずつ絞り込む探索。毎ステップで探索範囲が半減するため O(log n) を実現する。',
+        best: 'O(1)', average: 'O(log n)', worst: 'O(log n)', space: 'O(1)',
+        useCases: '大規模なソート済みデータの検索。辞書・電話帳の二分探索が典型例。',
+        visualGuide: '青い範囲が現在の探索対象。中央（紫）が評価され、範囲が半減していく様子に注目。',
+      },
+      bfs: {
+        name: '幅優先探索（BFS）',
+        description: '始点から近い順に展開する探索。最短経路を保証する。キューを使って実装する。',
+        best: 'O(1)', average: 'O(V+E)', worst: 'O(V+E)', space: 'O(V)',
+        useCases: '最短経路の発見、SNSの「n次のつながり」探索、レベル順ツリー走査。',
+        visualGuide: '水色のセルが「キュー（探索待ち）」、青が「訪問済み」。波紋のように広がる様子を観察。',
+      },
+      dfs: {
+        name: '深さ優先探索（DFS）',
+        description: '行き止まりまで深く進んでからバックトラックする探索。スタックまたは再帰で実装する。',
+        best: 'O(1)', average: 'O(V+E)', worst: 'O(V+E)', space: 'O(V)',
+        useCases: '迷路解法・トポロジカルソート・連結成分の検出・バックトラッキング問題。',
+        visualGuide: '一方向へ深く掘り進み、行き詰まると戻る様子を観察。BFSと比べると探索パスが長い。',
+      },
+      astar: {
+        name: 'A*アルゴリズム',
+        description: 'g値（始点からのコスト）とh値（ゴールまでの推定コスト）の和を最小化して最短経路を効率よく探索する。',
+        best: 'O(1)', average: 'O(E log V)', worst: 'O(E log V)', space: 'O(V)',
+        useCases: 'ゲームAI・カーナビ・ロボット経路計画など、最短経路を効率的に求める場面。',
+        visualGuide: 'セル内の数値がfスコア（g+h）。最小fスコアのセルから展開するBFSとの違いに注目。',
+      },
+      hanoi: {
+        name: 'ハノイの塔',
+        description: '3本のポールと複数の円盤を使うパズル。小さい円盤を大きい円盤の上に置かないルールで全円盤を移動する再帰の古典。',
+        best: 'O(2ⁿ)', average: 'O(2ⁿ)', worst: 'O(2ⁿ)', space: 'O(n)',
+        useCases: '再帰・分割統治の教材。n枚の移動には必ず 2ⁿ-1 手かかる。',
+        visualGuide: 'ポールA→C へ移動するため、補助ポールBを活用する分割統治を観察。円盤の色でサイズを識別。',
+      },
+      fibonacci: {
+        name: 'フィボナッチ数列',
+        description: 'F(n) = F(n-1) + F(n-2) で定義される数列。メモ化なしでは指数時間、メモ化（DP）で線形時間になる。',
+        best: 'O(n)', average: 'O(n)', worst: 'O(2ⁿ)※', space: 'O(n)',
+        useCases: '自然界のフラクタル・黄金比。動的計画法の入門例題として最適。',
+        visualGuide: 'テーブルが左から右へ埋まっていく。どの値を足し合わせているかの矢印に注目。',
+      },
+      euclidean: {
+        name: 'ユークリッド互除法',
+        description: '2つの整数の最大公約数（GCD）を「余りが0になるまで割り続ける」操作で求める。',
+        best: 'O(1)', average: 'O(log n)', worst: 'O(log n)', space: 'O(1)',
+        useCases: '分数の約分・暗号理論（RSA）・最小公倍数の計算。',
+        visualGuide: '矩形が正方形に分割される視覚化。余りの矩形が次のステップの対象になる様子を観察。',
+      },
+      montecarlo: {
+        name: 'モンテカルロ法（π推定）',
+        description: '単位正方形内にランダムな点を打ち、円内に入る割合からπを推定する確率的アルゴリズム。',
+        best: '—', average: 'O(n)', worst: 'O(n)', space: 'O(n)',
+        useCases: '数値積分・リスク計算・物理シミュレーション・機械学習のドロップアウト。',
+        visualGuide: '点が増えるにつれてπの推定値が収束していく。青が円内（π算定に使用）、赤が円外。',
+      },
+      convolution: {
+        name: '畳み込み（Convolution）',
+        description: 'カーネル（フィルター）を入力画像上でスライドさせながら要素積の和を計算する演算。CNNの中核。',
+        best: 'O(n²k²)', average: 'O(n²k²)', worst: 'O(n²k²)', space: 'O(n²)',
+        useCases: '画像フィルタリング・CNNの特徴抽出・音声信号処理。',
+        visualGuide: 'カーネル（中央グリッド）が入力画像（左）上をスライドし、出力（右）が確定する様子に注目。',
+      },
+      pooling: {
+        name: 'プーリング（Pooling）',
+        description: '特徴マップを縮小する操作。Max Poolingはウィンドウ内の最大値、Avg Poolingは平均値を出力する。',
+        best: 'O(n²)', average: 'O(n²)', worst: 'O(n²)', space: 'O(n²)',
+        useCases: 'CNN内で特徴マップのサイズ削減・位置不変性の向上。',
+        visualGuide: 'ウィンドウ（黄色枠）が入力上を移動し、Max/Avgを出力に書き込む様子を観察。',
+      },
+      kmeans: {
+        name: 'k-means クラスタリング',
+        description: 'k個のセントロイド（重心）を反復更新してデータを k クラスターに分類する教師なし学習アルゴリズム。',
+        best: 'O(nki)', average: 'O(nki)', worst: 'O(nki)', space: 'O(n+k)',
+        useCases: '顧客セグメンテーション・画像の色量子化・異常検知の前処理。',
+        visualGuide: 'セントロイド（×マーク）が移動するたびにポイントの色（クラスター割り当て）が変わる様子を観察。',
+      },
+      perceptron: {
+        name: 'パーセプトロン',
+        description: '入力に重みをかけて合計し、閾値関数で0/1を出力するニューラルネットワークの最小単位。誤差があれば重みを更新する。',
+        best: 'O(n)', average: 'O(n·e)', worst: 'O(n·e)', space: 'O(w)',
+        useCases: '線形分離可能な二値分類の基礎。多層化するとディープラーニングの出発点になる。',
+        visualGuide: '重み（エッジの太さ）が更新されるアニメーションに注目。誤差が0になると学習完了。',
+      },
+    },
+  },
 }
 
 // ----------------------------------------------------------------
@@ -428,6 +678,9 @@ const en: Translations = {
       title: 'Database Course',
       description: 'In-browser PostgreSQL powered by PGLite. Write real SQL and experience indexes, JOINs, and more.',
       scenarios: ['First CRUD', 'See Index Effects', 'Mastering JOINs'],
+    },
+    algorithmCourse: {
+      scenarios: ['Sort & Search Algorithms', 'Tower of Hanoi & Fibonacci', 'Convolution & K-Means'],
     },
     includedScenarios: 'Included Scenarios',
     startCourse: 'Start Course',
@@ -597,6 +850,174 @@ const en: Translations = {
     snapshotAdded:
       'Added the DB snapshot as seed.sql.\nPress Run to start with the restored database.',
     importError: (reason) => `Import error: ${reason}`,
+  },
+  algorithm: {
+    pageTitle: 'Algorithm Visualizer',
+    pageSubtitle: 'See and feel how algorithms work',
+    selectPrompt: 'Select an algorithm from the list on the left',
+    categories: { sort: 'Sorting', search: 'Searching', classic: 'Classics', ml: 'ML Basics' },
+    controls: {
+      play: 'Play', pause: 'Pause', step: 'Step', reset: 'Reset',
+      speed: 'Speed', speedLabels: ['Slowest', 'Slow', 'Normal', 'Fast', 'Fastest'],
+      arraySize: 'Array Size', randomize: 'Randomize', targetValue: 'Search Target',
+      numDisks: 'Number of Disks', nValue: 'n value', useMemo: 'Use Memoization',
+      inputA: 'Value A', inputB: 'Value B', numPoints: 'Number of Points',
+      numClusters: 'Clusters (k)', learningRate: 'Learning Rate',
+      poolType: 'Pool Type', poolSize: 'Window Size',
+      max: 'Max', avg: 'Average',
+      clickToToggleWall: 'Click to toggle wall', clearWalls: 'Clear Walls',
+      kernelType: 'Kernel', dataType: 'Training Data',
+      wallMode: 'Wall', startMode: 'Start', goalMode: 'Goal',
+    },
+    stepLog: {
+      title: 'Step Log',
+      empty: 'Press Play or Step to see the log here',
+      step: (n) => `[Step ${n}]`,
+    },
+    info: {
+      description: 'Description',
+      timeComplexity: 'Time Complexity',
+      bestCase: 'Best', averageCase: 'Average', worstCase: 'Worst',
+      spaceComplexity: 'Space Complexity',
+      useCases: 'Use Cases',
+      visualGuide: 'What to Watch',
+    },
+    nav: { backToTop: 'Back to Top', algorithmCourse: 'Algorithm Visualizer' },
+    algorithms: {
+      bubble: {
+        name: 'Bubble Sort',
+        description: 'Repeatedly compares adjacent elements and swaps them if out of order. The largest values "bubble up" to the end in each pass.',
+        best: 'O(n)', average: 'O(n²)', worst: 'O(n²)', space: 'O(1)',
+        useCases: 'Educational purposes and nearly-sorted small arrays. Rarely used in production.',
+        visualGuide: 'Yellow = comparing, Red = swapping, Green = sorted. Watch green grow from the right.',
+      },
+      selection: {
+        name: 'Selection Sort',
+        description: 'Finds the minimum of the unsorted portion and places it at the front. Simple but always O(n²) regardless of input.',
+        best: 'O(n²)', average: 'O(n²)', worst: 'O(n²)', space: 'O(1)',
+        useCases: 'When write/swap cost is high (e.g., flash memory), minimizing swaps matters.',
+        visualGuide: 'Purple = current minimum candidate. Watch it scan and then snap into place.',
+      },
+      insertion: {
+        name: 'Insertion Sort',
+        description: 'Like sorting playing cards: pick one from the unsorted portion and insert it into the correct position in the sorted portion.',
+        best: 'O(n)', average: 'O(n²)', worst: 'O(n²)', space: 'O(1)',
+        useCases: 'Small arrays and nearly-sorted data. Used inside TimSort for small subarrays.',
+        visualGuide: 'Watch the purple element shift left until it finds its correct position.',
+      },
+      merge: {
+        name: 'Merge Sort',
+        description: 'Divides the array in half, recursively sorts each half, then merges them. Stable and guarantees O(n log n) in all cases.',
+        best: 'O(n log n)', average: 'O(n log n)', worst: 'O(n log n)', space: 'O(n)',
+        useCases: 'External sorting of large data, stable sort requirements.',
+        visualGuide: 'Orange border = active merge range. Cyan bars are being merged into place.',
+      },
+      quick: {
+        name: 'Quick Sort',
+        description: 'Picks a pivot element and partitions the array around it, then recursively sorts each partition. Fastest in practice on average.',
+        best: 'O(n log n)', average: 'O(n log n)', worst: 'O(n²)', space: 'O(log n)',
+        useCases: 'General-purpose sorting — used in many standard libraries.',
+        visualGuide: 'Purple = pivot. Watch elements smaller than pivot move to its left.',
+      },
+      heap: {
+        name: 'Heap Sort',
+        description: 'Builds a max-heap, then repeatedly extracts the maximum to produce a sorted array. In-place with guaranteed O(n log n).',
+        best: 'O(n log n)', average: 'O(n log n)', worst: 'O(n log n)', space: 'O(1)',
+        useCases: 'When worst-case O(n log n) and O(1) space are both required.',
+        visualGuide: 'Two phases: heap build (first half), then extraction (second half). Watch max move to end.',
+      },
+      linear: {
+        name: 'Linear Search',
+        description: 'Scans from start to end, checking each element. Works on unsorted data but slow for large arrays.',
+        best: 'O(1)', average: 'O(n)', worst: 'O(n)', space: 'O(1)',
+        useCases: 'Unsorted or small collections, one-time searches.',
+        visualGuide: 'Yellow = currently scanning. Green = found. Gray = already checked.',
+      },
+      binary: {
+        name: 'Binary Search',
+        description: 'Repeatedly halves the search range on a sorted array. Each step eliminates half the remaining candidates.',
+        best: 'O(1)', average: 'O(log n)', worst: 'O(log n)', space: 'O(1)',
+        useCases: 'Fast lookups in large sorted datasets — dictionaries, phone books, sorted databases.',
+        visualGuide: 'Blue range = current search window. Purple = mid point. Watch the window shrink.',
+      },
+      bfs: {
+        name: 'Breadth-First Search (BFS)',
+        description: 'Explores all neighbors at distance d before going to distance d+1. Uses a queue. Guarantees the shortest path.',
+        best: 'O(1)', average: 'O(V+E)', worst: 'O(V+E)', space: 'O(V)',
+        useCases: 'Shortest path, social network connections, level-order tree traversal.',
+        visualGuide: 'Cyan = frontier (in queue). Blue = visited. Watch the wave expand outward.',
+      },
+      dfs: {
+        name: 'Depth-First Search (DFS)',
+        description: 'Dives as deep as possible before backtracking. Uses a stack or recursion. Does NOT guarantee shortest path.',
+        best: 'O(1)', average: 'O(V+E)', worst: 'O(V+E)', space: 'O(V)',
+        useCases: 'Maze solving, topological sort, connected components, backtracking problems.',
+        visualGuide: 'Watch it dive deep in one direction, then backtrack when stuck. Compare with BFS.',
+      },
+      astar: {
+        name: 'A* Algorithm',
+        description: 'Combines g (cost from start) and h (heuristic to goal) to guide search. Finds shortest path more efficiently than BFS.',
+        best: 'O(1)', average: 'O(E log V)', worst: 'O(E log V)', space: 'O(V)',
+        useCases: 'Game AI pathfinding, GPS navigation, robot motion planning.',
+        visualGuide: 'f = g + h score shown per cell. A* expands the cell with minimum f first.',
+      },
+      hanoi: {
+        name: 'Tower of Hanoi',
+        description: 'Move n disks from pole A to pole C using pole B as auxiliary, never placing a larger disk on a smaller one. A classic recursion puzzle.',
+        best: 'O(2ⁿ)', average: 'O(2ⁿ)', worst: 'O(2ⁿ)', space: 'O(n)',
+        useCases: 'Teaching recursion and divide-and-conquer. Exactly 2ⁿ-1 moves are required.',
+        visualGuide: 'Each disk has a unique color. Watch the recursive sub-problems: move n-1, then 1, then n-1.',
+      },
+      fibonacci: {
+        name: 'Fibonacci Sequence',
+        description: 'F(n) = F(n-1) + F(n-2). Without memoization: O(2ⁿ). With memoization (DP): O(n). A perfect intro to dynamic programming.',
+        best: 'O(n)', average: 'O(n)', worst: 'O(2ⁿ)※', space: 'O(n)',
+        useCases: 'Dynamic programming intro, nature (spirals, ratios), algorithm design teaching.',
+        visualGuide: 'Watch the table fill left to right. Arrows show which two values are being summed.',
+      },
+      euclidean: {
+        name: 'Euclidean Algorithm',
+        description: 'Finds the Greatest Common Divisor (GCD) by repeatedly replacing (a, b) with (b, a mod b) until the remainder is 0.',
+        best: 'O(1)', average: 'O(log n)', worst: 'O(log n)', space: 'O(1)',
+        useCases: 'Fraction simplification, RSA cryptography, LCM computation.',
+        visualGuide: 'Watch the rectangle get subdivided into squares. The final square size is the GCD.',
+      },
+      montecarlo: {
+        name: 'Monte Carlo (π Estimation)',
+        description: 'Randomly plots points in a unit square and counts those inside the inscribed circle. The ratio approximates π/4.',
+        best: '—', average: 'O(n)', worst: 'O(n)', space: 'O(n)',
+        useCases: 'Numerical integration, risk simulation, physics modeling, ML dropout.',
+        visualGuide: 'Blue = inside circle (used for π), Red = outside. Watch π estimate converge as points increase.',
+      },
+      convolution: {
+        name: 'Convolution',
+        description: 'Slides a kernel over the input, computing element-wise dot products. The core operation in Convolutional Neural Networks.',
+        best: 'O(n²k²)', average: 'O(n²k²)', worst: 'O(n²k²)', space: 'O(n²)',
+        useCases: 'Image filtering, CNN feature extraction, audio signal processing.',
+        visualGuide: 'Center = kernel sliding over input (left). Watch the output (right) build up pixel by pixel.',
+      },
+      pooling: {
+        name: 'Pooling',
+        description: 'Downsamples a feature map by taking the max or average in each window. Reduces size while retaining key features.',
+        best: 'O(n²)', average: 'O(n²)', worst: 'O(n²)', space: 'O(n²)',
+        useCases: 'CNN dimensionality reduction, translation invariance.',
+        visualGuide: 'Yellow window slides over the input. The max/average of highlighted cells is written to output.',
+      },
+      kmeans: {
+        name: 'k-Means Clustering',
+        description: 'Partitions data into k clusters by iterating between assigning points to nearest centroids and updating centroid positions.',
+        best: 'O(nki)', average: 'O(nki)', worst: 'O(nki)', space: 'O(n+k)',
+        useCases: 'Customer segmentation, image color quantization, anomaly detection preprocessing.',
+        visualGuide: 'Watch centroids (×) shift each iteration and point colors change as clusters reassign.',
+      },
+      perceptron: {
+        name: 'Perceptron',
+        description: 'The simplest neural network: weighted sum of inputs, threshold activation, weight update on error. Foundation of deep learning.',
+        best: 'O(n)', average: 'O(n·e)', worst: 'O(n·e)', space: 'O(w)',
+        useCases: 'Linearly separable binary classification. Basis of multi-layer neural networks.',
+        visualGuide: 'Edge thickness shows weight magnitude. Watch weights update when output ≠ target.',
+      },
+    },
   },
 }
 

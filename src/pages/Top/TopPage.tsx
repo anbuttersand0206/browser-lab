@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FlaskConical, Zap, Database, Sun, Moon, ArrowRight, Languages } from 'lucide-react'
+import { FlaskConical, Zap, Database, BrainCircuit, Sun, Moon, ArrowRight, Languages } from 'lucide-react'
 import { useTheme } from '../../hooks/useTheme'
 import { useI18n } from '../../i18n'
 
@@ -55,7 +55,7 @@ export default function TopPage() {
       </div>
 
       {/* コースカード */}
-      <div className="flex gap-6 px-6">
+      <div className="flex flex-wrap justify-center gap-6 px-6">
         <CourseCard
           icon={<Zap size={28} />}
           title={t.top.programmingCourse.title}
@@ -79,6 +79,18 @@ export default function TopPage() {
           onClick={() => navigate('/database')}
           color="green"
         />
+
+        <CourseCard
+          icon={<BrainCircuit size={28} />}
+          title={t.algorithm.pageTitle}
+          description={t.algorithm.pageSubtitle}
+          badges={['Sorting', 'Search', 'Classic', 'ML']}
+          scenarios={t.top.algorithmCourse.scenarios}
+          includedLabel={t.top.includedScenarios}
+          startLabel={t.top.startCourse}
+          onClick={() => navigate('/algorithm')}
+          color="purple"
+        />
       </div>
     </div>
   )
@@ -93,15 +105,24 @@ interface CourseCardProps {
   includedLabel: string
   startLabel: string
   onClick: () => void
-  color: 'blue' | 'green'
+  color: 'blue' | 'green' | 'purple'
 }
 
 function CourseCard({
   icon, title, description, badges, scenarios, includedLabel, startLabel, onClick, color,
 }: CourseCardProps) {
-  const accent = color === 'blue' ? 'border-blue-500/40 hover:border-blue-500' : 'border-green-500/40 hover:border-green-500'
-  const iconBg = color === 'blue' ? 'bg-blue-500/10 text-blue-400' : 'bg-green-500/10 text-green-400'
-  const badgeBg = color === 'blue' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'
+  const accent =
+    color === 'blue' ? 'border-blue-500/40 hover:border-blue-500' :
+    color === 'green' ? 'border-green-500/40 hover:border-green-500' :
+    'border-purple-500/40 hover:border-purple-500'
+  const iconBg =
+    color === 'blue' ? 'bg-blue-500/10 text-blue-400' :
+    color === 'green' ? 'bg-green-500/10 text-green-400' :
+    'bg-purple-500/10 text-purple-400'
+  const badgeBg =
+    color === 'blue' ? 'bg-blue-500/20 text-blue-400' :
+    color === 'green' ? 'bg-green-500/20 text-green-400' :
+    'bg-purple-500/20 text-purple-400'
 
   return (
     <button
