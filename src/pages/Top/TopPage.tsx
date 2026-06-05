@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FlaskConical, Zap, Database, BrainCircuit, Sun, Moon, ArrowRight, Languages } from 'lucide-react'
+import { FlaskConical, Zap, Database, BrainCircuit, Server, Sun, Moon, ArrowRight, Languages } from 'lucide-react'
 import { useTheme } from '../../hooks/useTheme'
 import { useI18n } from '../../i18n'
 
@@ -91,6 +91,18 @@ export default function TopPage() {
           onClick={() => navigate('/algorithm')}
           color="purple"
         />
+
+        <CourseCard
+          icon={<Server size={28} />}
+          title={t.top.infraCourse.title}
+          description={t.top.infraCourse.description}
+          badges={['Linux', 'Shell', 'WebContainers']}
+          scenarios={t.top.infraCourse.scenarios}
+          includedLabel={t.top.includedScenarios}
+          startLabel={t.top.startCourse}
+          onClick={() => navigate('/infra')}
+          color="orange"
+        />
       </div>
     </div>
   )
@@ -105,23 +117,26 @@ interface CourseCardProps {
   includedLabel: string
   startLabel: string
   onClick: () => void
-  color: 'blue' | 'green' | 'purple'
+  color: 'blue' | 'green' | 'purple' | 'orange'
 }
 
 function CourseCard({
   icon, title, description, badges, scenarios, includedLabel, startLabel, onClick, color,
 }: CourseCardProps) {
   const accent =
-    color === 'blue' ? 'border-blue-500/40 hover:border-blue-500' :
-    color === 'green' ? 'border-green-500/40 hover:border-green-500' :
+    color === 'blue'   ? 'border-blue-500/40 hover:border-blue-500' :
+    color === 'green'  ? 'border-green-500/40 hover:border-green-500' :
+    color === 'orange' ? 'border-orange-500/40 hover:border-orange-500' :
     'border-purple-500/40 hover:border-purple-500'
   const iconBg =
-    color === 'blue' ? 'bg-blue-500/10 text-blue-400' :
-    color === 'green' ? 'bg-green-500/10 text-green-400' :
+    color === 'blue'   ? 'bg-blue-500/10 text-blue-400' :
+    color === 'green'  ? 'bg-green-500/10 text-green-400' :
+    color === 'orange' ? 'bg-orange-500/10 text-orange-400' :
     'bg-purple-500/10 text-purple-400'
   const badgeBg =
-    color === 'blue' ? 'bg-blue-500/20 text-blue-400' :
-    color === 'green' ? 'bg-green-500/20 text-green-400' :
+    color === 'blue'   ? 'bg-blue-500/20 text-blue-400' :
+    color === 'green'  ? 'bg-green-500/20 text-green-400' :
+    color === 'orange' ? 'bg-orange-500/20 text-orange-400' :
     'bg-purple-500/20 text-purple-400'
 
   return (
