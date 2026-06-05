@@ -53,6 +53,11 @@ export interface Translations {
     algorithmCourse: {
       scenarios: readonly string[]
     }
+    infraCourse: {
+      title: string
+      description: string
+      scenarios: readonly string[]
+    }
     includedScenarios: string
     startCourse: string
   }
@@ -212,6 +217,61 @@ export interface Translations {
 
   // アルゴリズム可視化コース
   algorithm: AlgorithmTranslations
+
+  // インフラ学習コース
+  infra: InfraTranslations
+}
+
+// ----------------------------------------------------------------
+// InfraTranslations
+// ----------------------------------------------------------------
+interface InfraTranslations {
+  pageTitle: string
+  pageSubtitle: string
+  nav: { backToTop: string; infraCourse: string }
+  categories: {
+    filesystem: string
+    permissions: string
+    text: string
+    process: string
+    shell: string
+  }
+  ui: {
+    statusIdle: string
+    statusBooting: string
+    statusReady: string
+    statusError: string
+    progressLabel: string
+    fileTreeLabel: string
+    resetProgressButton: string
+    confirmReset: string
+    missionLabel: string
+    backgroundLabel: string
+    hintsLabel: string
+    answerLabel: string
+    commandsLabel: string
+    showHintButton: (revealed: number, total: number) => string
+    allHintsShown: string
+    showAnswerButton: string
+    hideAnswerButton: string
+    answerWarning: string
+    clearBanner: string
+    nextMissionButton: string
+    leaveWarningTitle: string
+    leaveWarningMessage: string
+    leaveCancel: string
+    leaveConfirm: string
+  }
+  resources: {
+    webcontainer: {
+      name: string
+      description: string
+      estimatedMemoryRange: string | null
+      estimatedDownloadSize: string | null
+      cautions: readonly string[]
+    }
+  }
+  recommendations: readonly string[]
 }
 
 interface AlgoContent {
@@ -314,6 +374,11 @@ const ja: Translations = {
     },
     algorithmCourse: {
       scenarios: ['ソート・探索アルゴリズム', 'ハノイの塔・フィボナッチ', '畳み込み・K-Means'],
+    },
+    infraCourse: {
+      title: 'インフラ学習',
+      description: 'WebContainersで動く本物のLinuxシェル。コマンドを打つたびにファイルツリーが変化する。「なぜそう動くのか」を体感するインフラ入門。',
+      scenarios: ['ファイルシステム操作', 'パーミッションと権限管理', 'テキスト処理とログ解析'],
     },
     includedScenarios: '収録シナリオ',
     startCourse: 'コースを開始',
@@ -652,6 +717,62 @@ const ja: Translations = {
       },
     },
   },
+  infra: {
+    pageTitle: 'インフラ学習コース',
+    pageSubtitle: 'ブラウザだけで動く本物のLinuxシェル',
+    nav: { backToTop: 'トップへ戻る', infraCourse: 'インフラ学習' },
+    categories: {
+      filesystem: 'ファイルシステム',
+      permissions: 'パーミッション',
+      text: 'テキスト処理',
+      process: 'プロセス管理',
+      shell: 'シェルスクリプト',
+    },
+    ui: {
+      statusIdle:          '起動待機中',
+      statusBooting:       'WebContainer 起動中...',
+      statusReady:         '準備完了',
+      statusError:         'エラー',
+      progressLabel:       '進捗',
+      fileTreeLabel:       'ファイルツリー',
+      resetProgressButton: '進捗をリセット',
+      confirmReset:        'クリア状態をすべてリセットします。よろしいですか？',
+      missionLabel:        'ミッション',
+      backgroundLabel:     '背景・実務コンテキスト',
+      hintsLabel:          'ヒント',
+      answerLabel:         '解答例',
+      commandsLabel:       'コマンド早見表',
+      showHintButton:      (revealed, total) => `ヒント ${revealed + 1} を見る (${revealed + 1}/${total})`,
+      allHintsShown:       'すべてのヒントを表示しました',
+      showAnswerButton:    '解答例を表示する',
+      hideAnswerButton:    '非表示にする',
+      answerWarning:       '本当に解答例を見ますか？まずヒントをすべて確認してみましょう。',
+      clearBanner:         'ミッションクリア！お疲れ様でした 🎉',
+      nextMissionButton:   '次のミッションへ',
+      leaveWarningTitle:   'セッションを終了しますか？',
+      leaveWarningMessage: 'WebContainerのファイルシステムはページを離れると失われます。作業内容を保存する場合は、ターミナルでファイルをダウンロードしてください。',
+      leaveCancel:         'この画面に留まる',
+      leaveConfirm:        '離れる',
+    },
+    resources: {
+      webcontainer: {
+        name: 'Linux シェル環境（WebContainers）',
+        description: 'ブラウザ内で完全な Linux シェル環境が動作します。インストール不要でコマンドを実際に実行できます。',
+        estimatedMemoryRange: '200〜500 MB',
+        estimatedDownloadSize: null,
+        cautions: [
+          'ページをリロードするとファイルシステムの内容は消去されます',
+          'セッションごとにミッションのセットアップが実行されます',
+          'sudo は使用できません',
+        ],
+      },
+    },
+    recommendations: [
+      '空きメモリ 4 GB 以上を推奨します',
+      '他のブラウザタブを閉じると動作が安定します',
+      'Chrome / Edge での利用を推奨します（Safari は一部機能が制限される場合があります）',
+    ],
+  },
 }
 
 // ----------------------------------------------------------------
@@ -681,6 +802,11 @@ const en: Translations = {
     },
     algorithmCourse: {
       scenarios: ['Sort & Search Algorithms', 'Tower of Hanoi & Fibonacci', 'Convolution & K-Means'],
+    },
+    infraCourse: {
+      title: 'Infra Learning',
+      description: 'A real Linux shell in the browser powered by WebContainers. Watch the file tree change as you type commands.',
+      scenarios: ['Filesystem Operations', 'Permissions & Ownership', 'Text Processing & Logs'],
     },
     includedScenarios: 'Included Scenarios',
     startCourse: 'Start Course',
@@ -1018,6 +1144,62 @@ const en: Translations = {
         visualGuide: 'Edge thickness shows weight magnitude. Watch weights update when output ≠ target.',
       },
     },
+  },
+  infra: {
+    pageTitle: 'Infra Learning Course',
+    pageSubtitle: 'A real Linux shell, right in your browser',
+    nav: { backToTop: 'Back to Top', infraCourse: 'Infra Learning' },
+    categories: {
+      filesystem: 'Filesystem',
+      permissions: 'Permissions',
+      text: 'Text Processing',
+      process: 'Process Management',
+      shell: 'Shell Scripting',
+    },
+    ui: {
+      statusIdle:          'Waiting to Start',
+      statusBooting:       'Starting WebContainer...',
+      statusReady:         'Ready',
+      statusError:         'Error',
+      progressLabel:       'Progress',
+      fileTreeLabel:       'File Tree',
+      resetProgressButton: 'Reset Progress',
+      confirmReset:        'Reset all cleared mission states?',
+      missionLabel:        'Mission',
+      backgroundLabel:     'Background & Real-World Context',
+      hintsLabel:          'Hints',
+      answerLabel:         'Solution',
+      commandsLabel:       'Command Reference',
+      showHintButton:      (revealed, total) => `Show Hint ${revealed + 1} (${revealed + 1}/${total})`,
+      allHintsShown:       'All hints revealed',
+      showAnswerButton:    'Show Solution',
+      hideAnswerButton:    'Hide',
+      answerWarning:       'Are you sure? Try all the hints first — they might be enough.',
+      clearBanner:         'Mission Complete! Well done 🎉',
+      nextMissionButton:   'Next Mission',
+      leaveWarningTitle:   'Leave this session?',
+      leaveWarningMessage: 'The WebContainer filesystem will be lost when you leave. Download any files you want to keep before leaving.',
+      leaveCancel:         'Stay here',
+      leaveConfirm:        'Leave',
+    },
+    resources: {
+      webcontainer: {
+        name: 'Linux Shell Environment (WebContainers)',
+        description: 'A complete Linux shell runs inside your browser. No installation required — execute real commands instantly.',
+        estimatedMemoryRange: '200–500 MB',
+        estimatedDownloadSize: null,
+        cautions: [
+          'Filesystem contents are cleared on page reload',
+          'Mission setup runs fresh each session',
+          'sudo is not available',
+        ],
+      },
+    },
+    recommendations: [
+      'At least 4 GB of free memory recommended',
+      'Closing other browser tabs improves stability',
+      'Chrome or Edge recommended (Safari may have limitations)',
+    ],
   },
 }
 
