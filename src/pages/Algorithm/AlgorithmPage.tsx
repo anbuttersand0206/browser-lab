@@ -20,6 +20,13 @@ import { ConvolutionVisualizer } from '../../components/AlgorithmViewer/visualiz
 import { PoolingVisualizer } from '../../components/AlgorithmViewer/visualizers/PoolingVisualizer'
 import { KMeansVisualizer } from '../../components/AlgorithmViewer/visualizers/KMeansVisualizer'
 import { PerceptronVisualizer } from '../../components/AlgorithmViewer/visualizers/PerceptronVisualizer'
+import { GraphVisualizer } from '../../components/AlgorithmViewer/visualizers/GraphVisualizer'
+import { CryptoVisualizer } from '../../components/AlgorithmViewer/visualizers/CryptoVisualizer'
+import { StringSearchVisualizer } from '../../components/AlgorithmViewer/visualizers/StringSearchVisualizer'
+import { DPTableVisualizer } from '../../components/AlgorithmViewer/visualizers/DPTableVisualizer'
+import { MazeVisualizer } from '../../components/AlgorithmViewer/visualizers/MazeVisualizer'
+import { ScatterVisualizer } from '../../components/AlgorithmViewer/visualizers/ScatterVisualizer'
+import { DecisionTreeVisualizer } from '../../components/AlgorithmViewer/visualizers/DecisionTreeVisualizer'
 
 // 速度レベル 1〜5 に対応する遅延時間（ミリ秒）。
 // 最低速 1200ms は「手動でステップを目で追える」基準、
@@ -409,8 +416,17 @@ function VisualizerSwitch({
     case 'convolution':return <ConvolutionVisualizer state={state} />
     case 'pooling':    return <PoolingVisualizer state={state} />
     case 'kmeans':     return <KMeansVisualizer state={state} />
-    case 'perceptron': return <PerceptronVisualizer state={state} />
-    default:           return null
+    case 'perceptron':    return <PerceptronVisualizer state={state} />
+    case 'graphShortest': return <GraphVisualizer state={state} mode="shortest" />
+    case 'graphMST':      return <GraphVisualizer state={state} mode="mst" />
+    case 'crypto':        return <CryptoVisualizer state={state} />
+    case 'stringSearch':  return <StringSearchVisualizer state={state} />
+    case 'dpTable':       return <DPTableVisualizer state={state} />
+    case 'maze':          return <MazeVisualizer state={state} />
+    case 'scatter':
+      return <ScatterVisualizer state={state} mode={algorithmId === 'svm' ? 'svm' : 'pca'} />
+    case 'decisionTree':  return <DecisionTreeVisualizer state={state} />
+    default:              return null
   }
 }
 

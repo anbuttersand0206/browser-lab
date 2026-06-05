@@ -288,3 +288,203 @@ export type AlgorithmConfig =
   | PoolingConfig
   | KMeansConfig
   | PerceptronConfig
+  | GraphAlgoConfig
+  | StringSearchConfig
+  | KnapsackConfig
+  | LevenshteinConfig
+  | MazeConfig
+  | ScatterConfig
+  | DecisionTreeConfig
+
+// ---- グラフ（ダイクストラ・ベルマンフォード・クラスカル・プリム） ----
+
+export interface GraphNodeState {
+  id: number
+  dist: number        // 始点からの暫定距離（Infinity = 未確定）
+  visited: boolean    // ダイクストラ: 確定済み / MST: MST に追加済み
+  inMST: boolean      // クラスカル・プリム用フラグ
+  parent: number | null
+}
+
+export type GraphEdgeStatus = 'none' | 'considering' | 'relaxed' | 'inMST' | 'rejected'
+
+export interface GraphEdgeState {
+  from: number
+  to: number
+  weight: number
+  status: GraphEdgeStatus
+}
+
+export interface GraphState {
+  nodeStates: GraphNodeState[]
+  edgeStates: GraphEdgeState[]
+  currentNodeId: number | null
+  phase: string
+  done: boolean
+}
+
+// ---- 暗号・セキュリティ（RSA・ディフィー・ヘルマン） ----
+
+export interface CryptoStepEntry {
+  label: LocalizedString
+  value: string
+  // 計算の現在のフォーカス行をハイライト表示するためのフラグ
+  highlight: boolean
+}
+
+export interface CryptoState {
+  steps: CryptoStepEntry[]
+  currentIndex: number
+  done: boolean
+}
+
+// ---- 文字列検索（KMP・ボイヤー・ムーア） ----
+
+export type CharStatus = 'normal' | 'comparing' | 'match' | 'mismatch' | 'found'
+
+export interface StringSearchState {
+  text: string
+  pattern: string
+  // text の各文字の状態
+  textStatus: CharStatus[]
+  // pattern の各文字の状態
+  patternStatus: CharStatus[]
+  // 確定した一致箇所のテキスト内開始インデックス
+  foundAt: number[]
+  // 現在のテキスト上のウィンドウ開始位置
+  textPos: number
+  // パターン内の照合位置
+  patternPos: number
+  // KMP 専用: 失敗関数テーブル（各 prefix の最長 proper border 長）
+  failureTable?: number[]
+  // Boyer-Moore 専用: 悪い文字テーブル（文字 → パターン内最右出現位置）
+  badCharTable?: Record<string, number>
+  // Boyer-Moore 専用: 直前の不一致によるスキップ量
+  skipAmount: number
+  matchStatus: 'none' | 'match' | 'mismatch'
+  done: boolean
+}
+
+// ---- 動的計画法テーブル（ナップサック・レーベンシュタイン） ----
+
+export interface DPTableState {
+  // null = まだ計算されていないセル
+  table: (number | null)[][]
+  rowLabels: string[]
+  colLabels: string[]
+  currentRow: number | null
+  currentCol: number | null
+  // 現在セルの計算に参照しているセル座標（矢印 / ハイライト表示用）
+  sourceCells: [number, number][]
+  done: boolean
+  // ナップサック専用: 逆追跡で選択されたアイテムのインデックス
+  selectedItems?: number[]
+  // レーベンシュタイン専用: 編集操作の文字列表現 (M=一致, S=置換, D=削除, I=挿入)
+  editOps?: string
+}
+
+// ---- 迷路生成（再帰バックトラッキング） ----
+
+export type MazeCellStatus = 'wall' | 'path' | 'current' | 'visited'
+
+export interface MazeState {
+  grid: MazeCellStatus[][]
+  rows: number
+  cols: number
+  currentCell: [number, number] | null
+  stackDepth: number
+  done: boolean
+}
+
+// ---- SVM・PCA（散布図ベースの可視化） ----
+
+export interface ScatterPoint {
+  x: number
+  y: number
+  label: number  // クラスラベル（0 or 1）
+  isSupportVector?: boolean
+}
+
+export interface ScatterState {
+  points: ScatterPoint[]
+  // SVM 専用: 決定境界 w[0]*x + w[1]*y + bias = 0
+  weights?: [number, number]
+  bias?: number
+  margin?: number
+  currentPointIndex?: number
+  iteration?: number
+  svmPhase?: string
+  // PCA 専用
+  mean?: [number, number]
+  pc1?: [number, number]   // 第1主成分の方向ベクトル（スケール済み）
+  pc2?: [number, number]   // 第2主成分の方向ベクトル
+  explained1?: number      // 第1主成分の寄与率
+  explained2?: number
+  pcaPhase?: string
+  done: boolean
+}
+
+// ---- 決定木 ----
+
+export interface DTNode {
+  id: number
+  featureIndex?: number    // 分割する特徴量のインデックス
+  threshold?: number       // 分割閾値
+  leftChildId?: number
+  rightChildId?: number
+  isLeaf: boolean
+  classLabel?: number      // 葉ノードの予測クラス
+  impurity: number         // ジニ不純度（0=純粋）
+  sampleCount: number
+  depth: number
+  active: boolean          // 現在処理中のノードかどうか
+}
+
+export interface DTDataPoint {
+  x: number
+  y: number
+  label: number
+}
+
+export interface DecisionTreeState {
+  nodes: DTNode[]
+  data: DTDataPoint[]
+  currentNodeId: number | null
+  phase: string
+  done: boolean
+}
+
+// ---- 新規アルゴリズムの入力設定型 ----
+
+// グラフはアルゴリズム内で固定グラフを使用するため設定不要
+export interface GraphAlgoConfig {
+  _brand: 'graphAlgo'
+}
+
+export interface StringSearchConfig {
+  text: string
+  pattern: string
+}
+
+export interface KnapsackConfig {
+  preset: 'classic' | 'large'
+}
+
+export interface LevenshteinConfig {
+  str1: string
+  str2: string
+}
+
+export interface MazeConfig {
+  rows: number
+  cols: number
+}
+
+export interface ScatterConfig {
+  dataType: 'linearlySeparable' | 'circles'
+}
+
+export interface DecisionTreeConfig {
+  dataType: 'simple' | 'complex'
+  maxDepth: number
+}
