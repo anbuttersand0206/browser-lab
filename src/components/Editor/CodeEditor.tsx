@@ -55,6 +55,9 @@ interface CodeEditorProps {
   // SQL モード用: 現在 PGLite に存在するテーブルとカラム名。
   // Compartment で動的に更新するため、テーブルを CREATE するたびに補完候補が増える。
   sqlTables?: SqlTableSchema[]
+  // 追加テーマの Extension。指定すると oneDark/lightTheme を上書きする。
+  // null または undefined の場合は resolvedTheme に従うデフォルト動作を使う。
+  themeExtension?: Extension | null
 }
 
 export function CodeEditor({
@@ -64,6 +67,7 @@ export function CodeEditor({
   onCtrlEnter,
   extraTsCompletions,
   sqlTables,
+  themeExtension,
 }: CodeEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -82,7 +86,7 @@ export function CodeEditor({
   // この Compartment だけを reconfigure することでエディタ状態を保持したまま更新できる。
   const sqlSchemaCompartmentRef = useRef<Compartment | null>(null)
 
-  // language または theme が変わるたびに EditorView を再生成する。
+  // language / resolvedTheme / themeExtension が変わるたびに EditorView を再生成する。
   // value・extraTsCompletions・sqlTables は別 effect または ref で管理するためここに含めない。
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -111,9 +115,13 @@ export function CodeEditor({
       // Ctrl+F / Cmd+F でエディタ内検索パネルを開く
       search({ top: true }),
       ...ctrlEnterKeymap,
-      ...(resolvedTheme === 'dark'
-        ? [oneDark]
-        : [lightTheme, syntaxHighlighting(defaultHighlightStyle)]),
+      // themeExtension が指定されていればそれを優先する。
+      // 未指定の場合はシステムのダーク/ライト設定に従う。
+      ...(themeExtension != null
+        ? [themeExtension]
+        : resolvedTheme === 'dark'
+          ? [oneDark]
+          : [lightTheme, syntaxHighlighting(defaultHighlightStyle)]),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) onChange(update.state.doc.toString())
       }),
@@ -166,7 +174,7 @@ export function CodeEditor({
       viewRef.current = null
       sqlSchemaCompartmentRef.current = null
     }
-  }, [language, resolvedTheme])
+  }, [language, resolvedTheme, themeExtension])
 
   // シナリオ切り替えなどで value prop が外部から変わった場合に CodeMirror ドキュメントを同期する。
   // onChange 経由の更新は current と一致するためスキップされ、無限ループを防ぐ。

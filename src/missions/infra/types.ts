@@ -1,7 +1,7 @@
 // InfraミッションのTypeScriptドメイン型定義
 // union型でバリデーションルールの不正状態を型レベルで防ぐ（Make Illegal States Unrepresentable）
 
-export type InfraCategory = 'filesystem' | 'permissions' | 'text' | 'process' | 'shell'
+export type InfraCategory = 'filesystem' | 'permissions' | 'text' | 'process' | 'shell' | 'network'
 
 export interface MissionLocale {
   title: string

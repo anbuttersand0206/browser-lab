@@ -16,12 +16,17 @@
  * coi-serviceworker と PWA キャッシュ SW を別々に登録できない。
  */
 
-const CACHE_NAME = 'browser-lab-v1'
+const CACHE_NAME = 'browser-lab-v2'
 
 // キャッシュ対象の拡張子。
 // .wasm / .data（PostgreSQL バイナリ）は合計 13MB 以上あり、
 // SW キャッシュに入れるとストレージ超過の恐れがあるため除外する。
 const CACHEABLE_EXTENSIONS = new Set(['.html', '.js', '.css', '.json', '.svg', '.ico'])
+
+// Vite はビルドごとにアセット名にコンテンツハッシュを埋め込む（例: index-CPGhimg3.js）。
+// ハッシュ付きアセットはコンテンツが変わらないため、キャッシュヒット時に即返してよい（Cache-First）。
+// このパターンは Vite のデフォルトハッシュ長（8文字）に対応している。
+const HASHED_ASSET_PATTERN = /\/assets\/.*\.[0-9a-f]{8}\.(js|css)$/
 
 /**
  * レスポンスに Cross-Origin Isolation ヘッダーを付与して返す。
@@ -54,6 +59,16 @@ function isCacheableRequest(request) {
     const ext = url.pathname.slice(url.pathname.lastIndexOf('.'))
     // 拡張子なし（ルートや SPA のパス）も HTML として扱いキャッシュ対象にする
     return ext === '' || CACHEABLE_EXTENSIONS.has(ext)
+  } catch {
+    return false
+  }
+}
+
+/** Vite のハッシュ付きアセット（不変ファイル）かどうかを判定する */
+function isHashedAsset(request) {
+  try {
+    const url = new URL(request.url)
+    return HASHED_ASSET_PATTERN.test(url.pathname)
   } catch {
     return false
   }
@@ -98,19 +113,48 @@ self.addEventListener('fetch', (event) => {
   // クロスオリジンリクエストはスキップして SW を素通りさせる
   if (request.cache === 'only-if-cached' && request.mode !== 'same-origin') return
 
-  event.respondWith(handleFetch(request))
+  // ハッシュ付きアセットはキャッシュファースト戦略を使う（コンテンツ不変のため安全）
+  if (isHashedAsset(request)) {
+    event.respondWith(handleCacheFirst(request))
+  } else {
+    event.respondWith(handleNetworkFirst(request))
+  }
 })
 
 // --- フェッチ処理 ---
 
 /**
- * ネットワーク優先・キャッシュフォールバック戦略。
+ * キャッシュファースト戦略（ハッシュ付き不変アセット用）。
+ *
+ * キャッシュヒット時: キャッシュから即返す（ネットワーク往復なしでオフライン高速化）。
+ * キャッシュミス時: ネットワークから取得してキャッシュに保存する。
+ */
+async function handleCacheFirst(request) {
+  const cachedResponse = await caches.match(request)
+  if (cachedResponse) {
+    return withCrossOriginIsolationHeaders(cachedResponse)
+  }
+
+  try {
+    const networkResponse = await fetch(request)
+    if (networkResponse.ok) {
+      const cache = await caches.open(CACHE_NAME)
+      cache.put(request, networkResponse.clone())
+    }
+    return withCrossOriginIsolationHeaders(networkResponse)
+  } catch {
+    return Response.error()
+  }
+}
+
+/**
+ * ネットワーク優先・キャッシュフォールバック戦略（HTML・manifest など更新があるリソース用）。
  *
  * ネットワーク成功時: キャッシュに保存してから COI ヘッダー付きで返す。
  * ネットワーク失敗時: キャッシュヒットなら COI ヘッダー付きで返す。
  *                   ナビゲーションリクエストは index.html で SPA フォールバックする。
  */
-async function handleFetch(request) {
+async function handleNetworkFirst(request) {
   try {
     const networkResponse = await fetch(request)
 

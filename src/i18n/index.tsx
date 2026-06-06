@@ -102,6 +102,7 @@ export interface Translations {
     share: string
     shareCopied: string
     shareTooltip: string
+    codeTheme: string
   }
 
   // コンソールパネル
@@ -122,6 +123,9 @@ export interface Translations {
     newFilePlaceholder: string
     createFileAriaLabel: string
     cancelAriaLabel: string
+    customScenarios: string
+    importCustomScenario: string
+    deleteCustomScenario: string
   }
 
   // シナリオパネル
@@ -216,6 +220,9 @@ export interface Translations {
     snapshotApplied: string
     snapshotAdded: string
     importError: (reason: string) => string
+    customScenarioImported: (title: string) => string
+    customScenarioError: (reason: string) => string
+    deleteCustomScenario: (title: string) => string
   }
 
   // アルゴリズム可視化コース
@@ -238,6 +245,7 @@ interface InfraTranslations {
     text: string
     process: string
     shell: string
+    network: string
   }
   ui: {
     statusIdle: string
@@ -328,6 +336,10 @@ interface AlgorithmTranslations {
     wallMode: string
     startMode: string
     goalMode: string
+    customArray: string
+    customArrayPlaceholder: string
+    customArrayApply: string
+    customArrayError: string
   }
   stepLog: {
     title: string
@@ -422,6 +434,7 @@ const ja: Translations = {
     share: '共有',
     shareCopied: 'リンクをコピーしました',
     shareTooltip: '現在のコードをURLで共有する',
+    codeTheme: 'コードテーマ',
   },
   console: {
     consoleTab: 'コンソール',
@@ -438,6 +451,9 @@ const ja: Translations = {
     newFilePlaceholder: 'filename.ts',
     createFileAriaLabel: 'ファイルを作成',
     cancelAriaLabel: 'キャンセル',
+    customScenarios: 'カスタム',
+    importCustomScenario: '＋ 読み込む',
+    deleteCustomScenario: 'カスタムシナリオを削除',
   },
   scenarioPanel: {
     ariaLabel: 'シナリオパネル',
@@ -555,6 +571,9 @@ const ja: Translations = {
     snapshotAdded:
       'DBスナップショットを seed.sql として追加しました。\n「実行」するとDBが復元された状態でコードが動きます。',
     importError: (reason) => `読み込みエラー: ${reason}`,
+    customScenarioImported: (title) => `カスタムシナリオ「${title}」を読み込みました。`,
+    customScenarioError: (reason) => `カスタムシナリオの読み込みエラー: ${reason}`,
+    deleteCustomScenario: (title) => `カスタムシナリオ「${title}」を削除しますか？`,
   },
   algorithm: {
     pageTitle: 'アルゴリズム可視化',
@@ -573,6 +592,8 @@ const ja: Translations = {
       clickToToggleWall: 'クリックで壁を切り替え', clearWalls: '壁をクリア',
       kernelType: 'カーネル', dataType: '学習データ',
       wallMode: '壁', startMode: 'スタート', goalMode: 'ゴール',
+      customArray: 'カスタム配列', customArrayPlaceholder: '例: 5,3,1,8,2',
+      customArrayApply: '適用', customArrayError: '2〜30個の整数をカンマ区切りで入力してください',
     },
     stepLog: {
       title: 'ステップログ',
@@ -860,6 +881,7 @@ const ja: Translations = {
       text: 'テキスト処理',
       process: 'プロセス管理',
       shell: 'シェルスクリプト',
+      network: 'ネットワーク',
     },
     ui: {
       statusIdle:          '起動待機中',
@@ -979,6 +1001,7 @@ const en: Translations = {
     share: 'Share',
     shareCopied: 'Link copied!',
     shareTooltip: 'Share current code via URL',
+    codeTheme: 'Code Theme',
   },
   console: {
     consoleTab: 'Console',
@@ -995,6 +1018,9 @@ const en: Translations = {
     newFilePlaceholder: 'filename.ts',
     createFileAriaLabel: 'Create file',
     cancelAriaLabel: 'Cancel',
+    customScenarios: 'Custom',
+    importCustomScenario: '+ Import',
+    deleteCustomScenario: 'Delete custom scenario',
   },
   scenarioPanel: {
     ariaLabel: 'Scenario panel',
@@ -1112,6 +1138,9 @@ const en: Translations = {
     snapshotAdded:
       'Added the DB snapshot as seed.sql.\nPress Run to start with the restored database.',
     importError: (reason) => `Import error: ${reason}`,
+    customScenarioImported: (title) => `Custom scenario "${title}" loaded successfully.`,
+    customScenarioError: (reason) => `Custom scenario error: ${reason}`,
+    deleteCustomScenario: (title) => `Delete custom scenario "${title}"?`,
   },
   algorithm: {
     pageTitle: 'Algorithm Visualizer',
@@ -1130,6 +1159,8 @@ const en: Translations = {
       clickToToggleWall: 'Click to toggle wall', clearWalls: 'Clear Walls',
       kernelType: 'Kernel', dataType: 'Training Data',
       wallMode: 'Wall', startMode: 'Start', goalMode: 'Goal',
+      customArray: 'Custom Array', customArrayPlaceholder: 'e.g. 5,3,1,8,2',
+      customArrayApply: 'Apply', customArrayError: 'Enter 2–30 integers separated by commas',
     },
     stepLog: {
       title: 'Step Log',
@@ -1417,6 +1448,7 @@ const en: Translations = {
       text: 'Text Processing',
       process: 'Process Management',
       shell: 'Shell Scripting',
+      network: 'Network',
     },
     ui: {
       statusIdle:          'Waiting to Start',

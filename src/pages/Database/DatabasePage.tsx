@@ -23,6 +23,9 @@ import { validateDatabaseExport, extractDatabaseSnapshot } from '../../lib/impor
 import { formatSql } from '../../lib/sqlFormatter'
 import { judgeDbOutput } from '../../lib/clearJudge'
 import { encodeShare, decodeShare, readShareFromHash } from '../../lib/shareUrl'
+import { saveToIndexedDb, loadFromIndexedDb } from '../../lib/progressStorage'
+import { CODE_THEMES, type CodeThemeId } from '../../lib/editorThemes'
+import { useCodeTheme } from '../../hooks/useCodeTheme'
 
 // リサイズ可能な3ペインのサイズをまとめて管理する
 interface PaneSizes {
@@ -165,6 +168,9 @@ export default function DatabasePage() {
   const [isExecuting, setIsExecuting] = useState(false)
   // 共有リンクのコピー完了フィードバック用。2 秒後に自動でリセットする。
   const [shareCopied, setShareCopied] = useState(false)
+  const { codeThemeId, setCodeThemeId } = useCodeTheme()
+  // 'system' の場合は extension を渡さず resolvedTheme に委ねる
+  const codeThemeExtension = CODE_THEMES.find((th) => th.id === codeThemeId)?.extension ?? null
 
   const isDirty = sql !== savedSql
 
@@ -380,8 +386,28 @@ export default function DatabasePage() {
       scenarioContents: debouncedScenarioContents,
       updatedAt: new Date().toISOString(),
     }
+    // localStorage に同期書き込みし、次回の初回レンダリングを高速化する。
+    // IndexedDB にも非同期で書くことで、localStorage がクリアされても復元できる。
     localStorage.setItem(LS_KEY, JSON.stringify(progress))
+    void saveToIndexedDb(LS_KEY, progress)
   }, [debouncedScenarioId, debouncedScenarioContents])
+
+  // localStorage が空の場合（ブラウザによる自動クリア等）に
+  // IndexedDB から進捗を復元する。マウント時に一度だけ実行する。
+  useEffect(() => {
+    if (Object.keys(savedProgress.scenarioContents).length > 0) return
+    loadFromIndexedDb<DbProgressV2>(LS_KEY).then((progress) => {
+      if (!isDbProgressV2(progress)) return
+      const restoredScenario =
+        databaseScenarios.find((s) => s.id === progress.scenarioId) ?? databaseScenarios[0]
+      setScenario(restoredScenario)
+      setScenarioContents(progress.scenarioContents)
+      const restoredSql = progress.scenarioContents[restoredScenario.id] ?? restoredScenario.initialSQL
+      setSql(restoredSql)
+      // 次回以降の高速読み込みのために localStorage にも書き戻す
+      localStorage.setItem(LS_KEY, JSON.stringify(progress))
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Ctrl+S / Cmd+S でエクスポートできるようにする。
   // ブラウザ標準の「ページを保存」ダイアログを preventDefault で抑制している。
@@ -610,6 +636,19 @@ export default function DatabasePage() {
                     <><Link2 size={12} />{t.toolbar.share}</>
                   )}
                 </button>
+                <select
+                  value={codeThemeId}
+                  onChange={(e) => setCodeThemeId(e.target.value as CodeThemeId)}
+                  title={t.toolbar.codeTheme}
+                  aria-label={t.toolbar.codeTheme}
+                  className="rounded border border-dark-border bg-dark-tab px-1.5 py-0.5 text-xs text-dark-textDim focus:outline-none dark:border-dark-border dark:bg-dark-tab dark:text-dark-textDim light:border-light-border light:bg-light-tab light:text-light-textDim"
+                >
+                  {CODE_THEMES.map((th) => (
+                    <option key={th.id} value={th.id}>
+                      {locale === 'ja' ? th.labelJa : th.labelEn}
+                    </option>
+                  ))}
+                </select>
               </div>
             }
           />
@@ -634,6 +673,7 @@ export default function DatabasePage() {
                 language="sql"
                 onCtrlEnter={executeSql}
                 sqlTables={tables.map((tbl) => ({ name: tbl.name, columns: tbl.columns.map((c) => c.name) }))}
+                themeExtension={codeThemeExtension}
               />
             )}
           </div>
