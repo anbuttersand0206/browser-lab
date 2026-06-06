@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronRight, Terminal, Info, Lightbulb, Lock, BookOpen, CheckCircle2, ArrowRight } from 'lucide-react'
 import type { InfraMission, MissionLocale } from '../../../missions/infra'
 import type { Locale } from '../../../i18n'
+import { ProcessTree } from '../ProcessTree/ProcessTree'
 
 interface Props {
   mission: InfraMission
@@ -10,6 +11,8 @@ interface Props {
   onNextMission: () => void
   /** i18nUI文字列 */
   ui: MissionPanelUi
+  /** コンテナが起動済みの場合に提供される。プロセスツリー取得に使う。 */
+  runCommand?: (cmd: string) => Promise<string>
 }
 
 // ─── ネットワーク構成図（SVG） ────────────────────────────────────────────────
@@ -114,6 +117,7 @@ export interface MissionPanelUi {
   hintsLabel: string
   answerLabel: string
   commandsLabel: string
+  processLabel: string
   showHintButton: (n: number, total: number) => string
   allHintsShown: string
   showAnswerButton: string
@@ -123,7 +127,7 @@ export interface MissionPanelUi {
   nextMissionButton: string
 }
 
-type Tab = 'mission' | 'hints' | 'answer' | 'commands'
+type Tab = 'mission' | 'hints' | 'answer' | 'commands' | 'process'
 
 /**
  * ミッション説明・ヒント・解答・コマンド早見表を表示する右パネル。
@@ -131,7 +135,7 @@ type Tab = 'mission' | 'hints' | 'answer' | 'commands'
  * ヒントは段階的に開示（最大3段階）し、解答は警告確認後に表示する。
  * ミッションが変わったときは key で再マウントして全状態をリセットする。
  */
-export function MissionPanel({ mission, locale, isCleared, onNextMission, ui }: Props) {
+export function MissionPanel({ mission, locale, isCleared, onNextMission, ui, runCommand }: Props) {
   const content: MissionLocale = mission.locale[locale]
 
   const [activeTab, setActiveTab] = useState<Tab>('mission')
@@ -176,7 +180,9 @@ export function MissionPanel({ mission, locale, isCleared, onNextMission, ui }: 
         aria-label="ミッションパネル"
         className="flex flex-shrink-0 border-b border-dark-border dark:border-dark-border light:border-light-border"
       >
-        {([ 'mission', 'hints', 'answer', 'commands'] as Tab[]).map((tab) => (
+        {/* コンテナが起動済みのときのみ「プロセス」タブを追加する。
+            runCommand が未提供（コンテナ未起動）のときは表示しない。 */}
+        {([ 'mission', 'hints', 'answer', 'commands', ...(runCommand ? ['process' as const] : [])] as Tab[]).map((tab) => (
           <TabButton
             key={tab}
             id={`mission-tab-${tab}`}
@@ -189,11 +195,12 @@ export function MissionPanel({ mission, locale, isCleared, onNextMission, ui }: 
       </div>
 
       {/* タブコンテンツ: role="tabpanel" でスクリーンリーダーにパネル領域を伝える */}
+      {/* プロセスタブは自前でスクロール管理するため overflow-auto / p-4 を分岐させる */}
       <div
         role="tabpanel"
         id={`mission-panel-${activeTab}`}
         aria-labelledby={`mission-tab-${activeTab}`}
-        className="flex-1 overflow-auto p-4"
+        className={`flex-1 overflow-hidden ${activeTab === 'process' ? '' : 'overflow-auto p-4'}`}
       >
         {activeTab === 'mission' && (
           <MissionTab content={content} ui={ui} category={mission.category} expanded={backgroundExpanded} onToggleBackground={() => setBackgroundExpanded((v) => !v)} />
@@ -206,6 +213,9 @@ export function MissionPanel({ mission, locale, isCleared, onNextMission, ui }: 
         )}
         {activeTab === 'commands' && (
           <CommandsTab content={content} ui={ui} />
+        )}
+        {activeTab === 'process' && runCommand && (
+          <ProcessTree runCommand={runCommand} />
         )}
       </div>
     </div>
@@ -243,7 +253,8 @@ function tabLabel(tab: Tab, ui: MissionPanelUi): string {
   if (tab === 'mission')  return ui.missionLabel
   if (tab === 'hints')    return ui.hintsLabel
   if (tab === 'answer')   return ui.answerLabel
-  return ui.commandsLabel
+  if (tab === 'commands') return ui.commandsLabel
+  return ui.processLabel
 }
 
 // ミッション文タブ: 問題文 + 折りたたみ式の背景説明 + カテゴリ別補足図

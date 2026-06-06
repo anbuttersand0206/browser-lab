@@ -134,7 +134,7 @@ export default function InfraPage() {
 
   // ─── WebContainer ─────────────────────────────────────────────────────────
 
-  const { status, fileTree, spawnShell, resizeShell, setupMission, refreshFileTree, validate } =
+  const { status, fileTree, spawnShell, resizeShell, setupMission, refreshFileTree, validate, runCommand } =
     useInfraContainer(hasConsented)
 
   const terminalRef = useRef<Terminal | null>(null)
@@ -497,6 +497,7 @@ export default function InfraPage() {
               hintsLabel:        t.infra.ui.hintsLabel,
               answerLabel:       t.infra.ui.answerLabel,
               commandsLabel:     t.infra.ui.commandsLabel,
+              processLabel:      t.infra.ui.processLabel,
               showHintButton:    t.infra.ui.showHintButton,
               allHintsShown:     t.infra.ui.allHintsShown,
               showAnswerButton:  t.infra.ui.showAnswerButton,
@@ -505,6 +506,8 @@ export default function InfraPage() {
               clearBanner:       t.infra.ui.clearBanner,
               nextMissionButton: t.infra.ui.nextMissionButton,
             }}
+            // コンテナ起動済みのときのみ runCommand を渡す（プロセスタブの表示制御）
+            runCommand={status === 'ready' ? runCommand : undefined}
           />
         </div>
       </div>

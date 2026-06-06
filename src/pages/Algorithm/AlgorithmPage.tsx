@@ -28,6 +28,7 @@ import { MazeVisualizer } from '../../components/AlgorithmViewer/visualizers/Maz
 import { ScatterVisualizer } from '../../components/AlgorithmViewer/visualizers/ScatterVisualizer'
 import { DecisionTreeVisualizer } from '../../components/AlgorithmViewer/visualizers/DecisionTreeVisualizer'
 import { MobileWarning } from '../../components/MobileWarning/MobileWarning'
+import { AlgorithmRunnerPanel } from '../../components/AlgorithmViewer/AlgorithmRunnerPanel'
 
 // 速度レベル 1〜5 に対応する遅延時間（ミリ秒）。
 // 最低速 1200ms は「手動でステップを目で追える」基準、
@@ -210,6 +211,9 @@ export default function AlgorithmPage() {
   const toggleTheme = () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
   const toggleLocale = () => setLocale(locale === 'ja' ? 'en' : 'ja')
 
+  // 比較モード: 2つのアルゴリズムを同時に表示して挙動を並べて比較する
+  const [compareMode, setCompareMode] = useState(false)
+
   return (
     <div className="flex h-full flex-col bg-dark-bg dark:bg-dark-bg light:bg-light-bg">
       {/* モバイル端末向け警告バナー（sm 以上は CSS で非表示） */}
@@ -229,6 +233,17 @@ export default function AlgorithmPage() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          {/* 比較モードトグルボタン */}
+          <button
+            onClick={() => setCompareMode((v) => !v)}
+            className={`flex items-center gap-1 rounded border px-2 py-0.5 text-xs transition-colors ${
+              compareMode
+                ? 'border-purple-500/60 bg-purple-500/20 text-purple-400'
+                : 'border-dark-border text-dark-textDim hover:text-dark-text dark:border-dark-border dark:text-dark-textDim dark:hover:text-dark-text light:border-light-border light:text-light-textDim light:hover:text-light-text'
+            }`}
+          >
+            {compareMode ? alg.compareMode.disable : alg.compareMode.enable}
+          </button>
           <button
             onClick={toggleLocale}
             className="flex items-center gap-1 rounded border border-dark-border px-2 py-0.5 text-xs text-dark-textDim hover:text-dark-text dark:border-dark-border dark:text-dark-textDim dark:hover:text-dark-text light:border-light-border light:text-light-textDim light:hover:text-light-text"
@@ -247,8 +262,22 @@ export default function AlgorithmPage() {
         </div>
       </div>
 
-      {/* 3ペインレイアウト */}
-      <div className="flex flex-1 overflow-hidden">
+      {/* 比較モード: 左右2パネルを並べて表示する。サイドバーと情報パネルは非表示にして空間を確保する。 */}
+      {compareMode && (
+        <div className="flex flex-1 gap-3 overflow-hidden p-3">
+          <div className="flex-1 overflow-hidden">
+            <div className="mb-1 text-center text-xs font-medium text-blue-400">{alg.compareMode.leftPanel}</div>
+            <AlgorithmRunnerPanel accentColor="blue" />
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <div className="mb-1 text-center text-xs font-medium text-purple-400">{alg.compareMode.rightPanel}</div>
+            <AlgorithmRunnerPanel accentColor="purple" />
+          </div>
+        </div>
+      )}
+
+      {/* 通常モードの 3ペインレイアウト */}
+      <div className={`flex flex-1 overflow-hidden ${compareMode ? 'hidden' : ''}`}>
 
         {/* 左サイドバー: アルゴリズムリスト */}
         <div

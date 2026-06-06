@@ -321,6 +321,22 @@ export function useInfraContainer(isEnabled: boolean) {
     }
   }, [])
 
+  // 任意のシェルコマンドを実行して標準出力を文字列として返す。
+  // プロセスツリー取得などの読み取り専用操作に使う。
+  const runCommand = useCallback(async (cmd: string): Promise<string> => {
+    const wc = wcRef.current
+    if (!wc) return ''
+    try {
+      const proc = await wc.spawn('sh', ['-c', cmd])
+      let out = ''
+      proc.output.pipeTo(new WritableStream({ write(d) { out += d } }))
+      await proc.exit
+      return out
+    } catch {
+      return ''
+    }
+  }, [])
+
   return {
     status,
     fileTree,
@@ -329,6 +345,7 @@ export function useInfraContainer(isEnabled: boolean) {
     setupMission,
     refreshFileTree,
     validate,
+    runCommand,
   }
 }
 

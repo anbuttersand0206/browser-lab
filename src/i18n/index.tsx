@@ -235,6 +235,20 @@ export interface Translations {
     dismissWarning: string
   }
 
+  // チュートリアル（初回訪問ガイド）
+  tutorial: {
+    title: string
+    skipButton: string
+    prevButton: string
+    nextButton: string
+    doneButton: string
+    steps: readonly {
+      title: string
+      description: string
+      tips: readonly string[]
+    }[]
+  }
+
   // アルゴリズム可視化コース
   algorithm: AlgorithmTranslations
 
@@ -271,6 +285,7 @@ interface InfraTranslations {
     hintsLabel: string
     answerLabel: string
     commandsLabel: string
+    processLabel: string
     showHintButton: (revealed: number, total: number) => string
     allHintsShown: string
     showAnswerButton: string
@@ -370,6 +385,12 @@ interface AlgorithmTranslations {
   nav: {
     backToTop: string
     algorithmCourse: string
+  }
+  compareMode: {
+    enable: string
+    disable: string
+    leftPanel: string
+    rightPanel: string
   }
 }
 
@@ -593,6 +614,55 @@ const ja: Translations = {
     desktopRecommended: 'このページはデスクトップでの利用を推奨します。モバイルでは一部機能（ターミナル・リサイズ）が正常に動作しない場合があります。',
     dismissWarning: '警告を閉じる',
   },
+  tutorial: {
+    title: 'Browser Lab へようこそ',
+    skipButton: 'スキップ',
+    prevButton: '← 前へ',
+    nextButton: '次へ →',
+    doneButton: '始める',
+    steps: [
+      {
+        title: 'インフラ学習コース',
+        description: 'ブラウザ上で本物の Linux ターミナルを操作しながらインフラの基礎を学べます。',
+        tips: [
+          'ターミナルにコマンドを入力して操作する',
+          'ミッション判定は自動で行われる（5 秒ごとにチェック）',
+          'ヒント・解答を段階的に開示できる',
+          '右パネルのネットワーク図でコンテキストを把握',
+        ],
+      },
+      {
+        title: 'プログラミングコース',
+        description: 'WebContainers を使ったブラウザ内 Node.js / TypeScript 実行環境でコーディングを学べます。',
+        tips: [
+          'Ctrl+Enter でコードを実行',
+          '採点は出力を自動チェックして行われる',
+          '差分タブで模範解答との違いを確認',
+          'カスタムシナリオを JSON で読み込める',
+        ],
+      },
+      {
+        title: 'DB 学習コース',
+        description: 'PGLite を使ったブラウザ内 PostgreSQL で SQL を実践的に学べます。',
+        tips: [
+          'Ctrl+Enter で SQL を実行',
+          'ER 図タブでスキーマを可視化',
+          'SQL フォーマッターで整形できる',
+          'スナップショット機能でDB状態をエクスポート',
+        ],
+      },
+      {
+        title: 'アルゴリズム可視化コース',
+        description: '37 種のアルゴリズムをステップ実行・速度調整しながら視覚的に学べます。',
+        tips: [
+          '再生・一時停止・ステップ実行でペースを調整',
+          '1ステップ戻る機能で動きを丁寧に追える',
+          'ソートに任意の数値配列を入力して試せる',
+          'グリッドアルゴリズムは壁・スタート・ゴールを自由配置',
+        ],
+      },
+    ],
+  },
   algorithm: {
     pageTitle: 'アルゴリズム可視化',
     pageSubtitle: 'アルゴリズムの動きを目で見て、肌で感じる',
@@ -627,6 +697,12 @@ const ja: Translations = {
       visualGuide: 'どこを見るべきか',
     },
     nav: { backToTop: 'トップへ戻る', algorithmCourse: 'アルゴリズム可視化' },
+    compareMode: {
+      enable:     '比較モード',
+      disable:    '比較モードを終了',
+      leftPanel:  '左パネル',
+      rightPanel: '右パネル',
+    },
     algorithms: {
       bubble: {
         name: 'バブルソート',
@@ -915,6 +991,7 @@ const ja: Translations = {
       hintsLabel:          'ヒント',
       answerLabel:         '解答例',
       commandsLabel:       'コマンド早見表',
+      processLabel:        'プロセス',
       showHintButton:      (revealed, total) => `ヒント ${revealed + 1} を見る (${revealed + 1}/${total})`,
       allHintsShown:       'すべてのヒントを表示しました',
       showAnswerButton:    '解答例を表示する',
@@ -1168,6 +1245,55 @@ const en: Translations = {
     desktopRecommended: 'This page is best experienced on a desktop. Some features (terminal, panel resize) may not work correctly on mobile.',
     dismissWarning: 'Dismiss warning',
   },
+  tutorial: {
+    title: 'Welcome to Browser Lab',
+    skipButton: 'Skip',
+    prevButton: '← Prev',
+    nextButton: 'Next →',
+    doneButton: "Let's start",
+    steps: [
+      {
+        title: 'Infra Learning Course',
+        description: 'Operate a real Linux terminal in your browser and learn infrastructure basics.',
+        tips: [
+          'Type commands into the terminal to interact',
+          'Missions are auto-graded every 5 seconds',
+          'Hints and answers are revealed step by step',
+          'The network diagram panel gives visual context',
+        ],
+      },
+      {
+        title: 'Programming Course',
+        description: 'Learn coding in a browser-based Node.js / TypeScript environment powered by WebContainers.',
+        tips: [
+          'Ctrl+Enter to run your code',
+          'Output is auto-graded against expected results',
+          'Use the Diff tab to compare with the model answer',
+          'Import custom scenarios via JSON',
+        ],
+      },
+      {
+        title: 'Database Course',
+        description: 'Practice SQL hands-on with a PostgreSQL database running entirely in your browser via PGLite.',
+        tips: [
+          'Ctrl+Enter to execute SQL',
+          'ER Diagram tab visualizes your schema',
+          'SQL formatter keeps your queries tidy',
+          'Snapshot feature exports/restores DB state',
+        ],
+      },
+      {
+        title: 'Algorithm Visualizer',
+        description: 'Learn 37 algorithms by stepping through them visually with speed control.',
+        tips: [
+          'Play, pause, step-forward and step-back at your own pace',
+          'Enter a custom number array for sort algorithms',
+          'Grid algorithms let you place walls, start and goal freely',
+          'The right panel explains time/space complexity',
+        ],
+      },
+    ],
+  },
   algorithm: {
     pageTitle: 'Algorithm Visualizer',
     pageSubtitle: 'See and feel how algorithms work',
@@ -1202,6 +1328,12 @@ const en: Translations = {
       visualGuide: 'What to Watch',
     },
     nav: { backToTop: 'Back to Top', algorithmCourse: 'Algorithm Visualizer' },
+    compareMode: {
+      enable:     'Compare Mode',
+      disable:    'Exit Compare Mode',
+      leftPanel:  'Left Panel',
+      rightPanel: 'Right Panel',
+    },
     algorithms: {
       bubble: {
         name: 'Bubble Sort',
@@ -1490,6 +1622,7 @@ const en: Translations = {
       hintsLabel:          'Hints',
       answerLabel:         'Solution',
       commandsLabel:       'Command Reference',
+      processLabel:        'Processes',
       showHintButton:      (revealed, total) => `Show Hint ${revealed + 1} (${revealed + 1}/${total})`,
       allHintsShown:       'All hints revealed',
       showAnswerButton:    'Show Solution',

@@ -1,9 +1,10 @@
-import { type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FlaskConical, Zap, Database, BrainCircuit, Server, Sun, Moon, ArrowRight, Languages, FileText } from 'lucide-react'
 import { useTheme } from '../../hooks/useTheme'
 import { useI18n } from '../../i18n'
 import { generateProgressReport, downloadMarkdownReport } from '../../lib/progressReport'
+import { TutorialModal, isTutorialDone } from '../../components/TutorialModal/TutorialModal'
 
 export default function TopPage() {
   const navigate = useNavigate()
@@ -13,6 +14,9 @@ export default function TopPage() {
   const toggleTheme = () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
   // 現在のロケールとは反対のロケールに切り替える
   const toggleLocale = () => setLocale(locale === 'ja' ? 'en' : 'ja')
+
+  // チュートリアルは初回訪問時のみ表示する（localStorage で完了フラグを管理）
+  const [showTutorial, setShowTutorial] = useState(() => !isTutorialDone())
 
   const handleDownloadReport = () => {
     const report = generateProgressReport(locale)
@@ -122,6 +126,11 @@ export default function TopPage() {
           color="purple"
         />
       </main>
+
+      {/* 初回訪問時のみ表示するチュートリアルモーダル */}
+      {showTutorial && (
+        <TutorialModal onClose={() => setShowTutorial(false)} />
+      )}
     </div>
   )
 }
