@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Database, Sun, Moon, ArrowLeft, Play, ChevronRight, HelpCircle, CheckCircle2, AlignLeft, Languages } from 'lucide-react'
+import { Database, Sun, Moon, ArrowLeft, Play, ChevronRight, HelpCircle, CheckCircle2, AlignLeft, Languages, Link2, Check } from 'lucide-react'
 import { usePGLite, type QueryResult } from '../../hooks/usePGLite'
 import { useUnsavedGuard } from '../../hooks/useUnsavedGuard'
 import { useJsonIO } from '../../hooks/useJsonIO'
@@ -22,6 +22,7 @@ import { databaseScenarios, type DatabaseScenario } from '../../scenarios/databa
 import { validateDatabaseExport, extractDatabaseSnapshot } from '../../lib/importValidator'
 import { formatSql } from '../../lib/sqlFormatter'
 import { judgeDbOutput } from '../../lib/clearJudge'
+import { encodeShare, decodeShare, readShareFromHash } from '../../lib/shareUrl'
 
 // リサイズ可能な3ペインのサイズをまとめて管理する
 interface PaneSizes {
@@ -146,9 +147,15 @@ export default function DatabasePage() {
     savedProgress.scenarioContents
   )
 
-  // アクティブシナリオの SQL（保存済み内容があれば復元、なければ initialSQL）
+  // アクティブシナリオの SQL（共有URL → LocalStorage → initialSQL の優先順で決定する）
   const initialSql = savedProgress.scenarioContents[initialScenario.id] ?? initialScenario.initialSQL
-  const [sql, setSql] = useState<string>(initialSql)
+  const [sql, setSql] = useState<string>(() => {
+    const shareEncoded = readShareFromHash()
+    if (shareEncoded) {
+      try { return decodeShare(shareEncoded) } catch { /* 不正な share パラメータは無視する */ }
+    }
+    return initialSql
+  })
   // savedSql はエクスポート後の状態を保持し、isDirty の基準となる
   const [savedSql, setSavedSql] = useState<string>(initialSql)
 
@@ -156,6 +163,8 @@ export default function DatabasePage() {
   // queryHistory は JSON エクスポート用に実行済みクエリを蓄積する
   const [queryHistory, setQueryHistory] = useState<QueryResult[]>([])
   const [isExecuting, setIsExecuting] = useState(false)
+  // 共有リンクのコピー完了フィードバック用。2 秒後に自動でリセットする。
+  const [shareCopied, setShareCopied] = useState(false)
 
   const isDirty = sql !== savedSql
 
@@ -173,15 +182,29 @@ export default function DatabasePage() {
     setScenarioContents((prev) => ({ ...prev, [scenario.id]: newSql }))
   }, [scenario.id])
 
-  // 初回マウント時にURLへシナリオIDを付与する。
-  // ページを直接開いた場合（/#/database のみ）に対し、現在のシナリオIDを追加して
-  // ブックマークやシェアで直接リンクできるようにする。
+  // 初回マウント時にURLへシナリオIDを付与し、share パラメータをクリアする。
+  // - シナリオIDがない場合: /#/database/... に遷移（share も同時にクリアされる）
+  // - share パラメータがある場合: 内容は読み込み済みのため URL から除去する
   useEffect(() => {
+    const hasShare = readShareFromHash() !== null
     if (!urlScenarioId) {
       navigate(`/database/${initialScenario.id}`, { replace: true })
+    } else if (hasShare) {
+      navigate(`/database/${urlScenarioId}`, { replace: true })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // 初回マウント時のみ実行
+
+  // 現在の SQL を URL にエンコードしてクリップボードにコピーする。
+  // コピー完了を 2 秒間ボタンで通知し、自動でリセットする。
+  const handleShare = useCallback(() => {
+    const encoded = encodeShare(sql)
+    const shareUrl = `${window.location.origin}${window.location.pathname}#/database/${scenario.id}?share=${encoded}`
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2000)
+    })
+  }, [sql, scenario.id])
 
   const handleExport = useCallback(async () => {
     // 現在のPGLite DBの状態をSQLダンプとして同梱する。
@@ -569,6 +592,22 @@ export default function DatabasePage() {
                       <Play size={12} />
                       {t.toolbar.execute}
                     </>
+                  )}
+                </button>
+                <button
+                  onClick={handleShare}
+                  title={t.toolbar.shareTooltip}
+                  aria-label={t.toolbar.share}
+                  className={`flex items-center gap-1 rounded px-2.5 py-1 text-xs transition-colors ${
+                    shareCopied
+                      ? 'text-green-400'
+                      : 'text-dark-textDim hover:bg-dark-hover hover:text-dark-text dark:text-dark-textDim dark:hover:bg-dark-hover dark:hover:text-dark-text light:text-light-textDim light:hover:bg-light-hover light:hover:text-light-text'
+                  }`}
+                >
+                  {shareCopied ? (
+                    <><Check size={12} />{t.toolbar.shareCopied}</>
+                  ) : (
+                    <><Link2 size={12} />{t.toolbar.share}</>
                   )}
                 </button>
               </div>

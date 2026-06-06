@@ -99,6 +99,9 @@ export interface Translations {
     executing: string
     run: string
     stop: string
+    share: string
+    shareCopied: string
+    shareTooltip: string
   }
 
   // コンソールパネル
@@ -416,6 +419,9 @@ const ja: Translations = {
     executing: '実行中...',
     run: '実行',
     stop: '停止',
+    share: '共有',
+    shareCopied: 'リンクをコピーしました',
+    shareTooltip: '現在のコードをURLで共有する',
   },
   console: {
     consoleTab: 'コンソール',
@@ -970,6 +976,9 @@ const en: Translations = {
     executing: 'Running...',
     run: 'Run',
     stop: 'Stop',
+    share: 'Share',
+    shareCopied: 'Link copied!',
+    shareTooltip: 'Share current code via URL',
   },
   console: {
     consoleTab: 'Console',

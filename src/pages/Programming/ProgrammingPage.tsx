@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Zap, Sun, Moon, ArrowLeft, ChevronRight, HelpCircle, Plus, Check, X, CheckCircle2, Languages } from 'lucide-react'
+import { Zap, Sun, Moon, ArrowLeft, ChevronRight, HelpCircle, Plus, Check, X, CheckCircle2, Languages, Link2 } from 'lucide-react'
 import { useWebContainer, type ContainerStatus } from '../../hooks/useWebContainer'
 import { useUnsavedGuard } from '../../hooks/useUnsavedGuard'
 import { useJsonIO } from '../../hooks/useJsonIO'
@@ -19,6 +19,7 @@ import { validateProgrammingExport, extractDatabaseSnapshot } from '../../lib/im
 import { getPackageCompletions } from '../../lib/tsCompletions'
 import { useCompletedScenarios } from '../../hooks/useCompletedScenarios'
 import { judgeProgOutput } from '../../lib/clearJudge'
+import { encodeShare, decodeShare, readShareFromHash } from '../../lib/shareUrl'
 
 // リサイズ可能な3ペインのサイズをまとめて管理する
 interface PaneSizes {
@@ -178,14 +179,27 @@ export default function ProgrammingPage() {
     savedProgress.scenarioContents
   )
 
-  // アクティブシナリオのファイル群（保存済みがあれば復元、なければ initialFiles）
+  // アクティブシナリオのファイル群（共有URL → LocalStorage → initialFiles の優先順で決定する）
   const initialFiles = savedProgress.scenarioContents[initialScenario.id] ?? initialScenario.files
-  const [files, setFiles] = useState<Record<string, string>>(initialFiles)
+  const [files, setFiles] = useState<Record<string, string>>(() => {
+    const shareEncoded = readShareFromHash()
+    if (shareEncoded) {
+      try {
+        // share パラメータはアクティブファイル（index.ts）の内容のみを含む
+        const decoded = decodeShare(shareEncoded)
+        const entryFile = 'index.ts' in initialFiles ? 'index.ts' : Object.keys(initialFiles)[0]
+        return { ...initialFiles, [entryFile]: decoded }
+      } catch { /* 不正な share パラメータは無視する */ }
+    }
+    return initialFiles
+  })
   const [activeFile, setActiveFile] = useState('index.ts')
   // savedFiles はエクスポート後の状態を保持し、isDirty の基準となる
   const [savedFiles, setSavedFiles] = useState<Record<string, string>>(initialFiles)
 
   const isDirty = JSON.stringify(files) !== JSON.stringify(savedFiles)
+  // 共有リンクのコピー完了フィードバック用。2 秒後に自動でリセットする。
+  const [shareCopied, setShareCopied] = useState(false)
 
   const [paneSizes, setPaneSizes] = useState<PaneSizes>({
     sidebarWidthPx: 200,
@@ -200,14 +214,30 @@ export default function ProgrammingPage() {
     setScenarioContents((prev) => ({ ...prev, [scenario.id]: newFiles }))
   }, [scenario.id])
 
-  // 初回マウント時にURLへシナリオIDを付与する。
-  // ページを直接開いた場合（/#/programming のみ）に対し、現在のシナリオIDを追加する。
+  // 初回マウント時にURLへシナリオIDを付与し、share パラメータをクリアする。
+  // - シナリオIDがない場合: /#/programming/... に遷移（share も同時にクリアされる）
+  // - share パラメータがある場合: 内容は読み込み済みのため URL から除去する
   useEffect(() => {
+    const hasShare = readShareFromHash() !== null
     if (!urlScenarioId) {
       navigate(`/programming/${initialScenario.id}`, { replace: true })
+    } else if (hasShare) {
+      navigate(`/programming/${urlScenarioId}`, { replace: true })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // 初回マウント時のみ実行
+
+  // アクティブファイルの内容を URL にエンコードしてクリップボードにコピーする。
+  // 共有される内容はアクティブファイル1ファイルのみ（index.ts 等）。
+  const handleShare = useCallback(() => {
+    const content = files[activeFile] ?? ''
+    const encoded = encodeShare(content)
+    const shareUrl = `${window.location.origin}${window.location.pathname}#/programming/${scenario.id}?share=${encoded}`
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2000)
+    })
+  }, [files, activeFile, scenario.id])
 
   const handleExport = useCallback(async () => {
     // コード実行後に生成された db-dump.sql があれば databaseSnapshot として同梱する。
@@ -660,6 +690,24 @@ export default function ProgrammingPage() {
             onSave={handleExport}
             onLoad={handleImport}
             onReset={handleReset}
+            extra={
+              <button
+                onClick={handleShare}
+                title={t.toolbar.shareTooltip}
+                aria-label={t.toolbar.share}
+                className={`flex items-center gap-1 rounded px-2.5 py-1 text-xs transition-colors ${
+                  shareCopied
+                    ? 'text-green-400'
+                    : 'text-dark-textDim hover:bg-dark-hover hover:text-dark-text dark:text-dark-textDim dark:hover:bg-dark-hover dark:hover:text-dark-text light:text-light-textDim light:hover:bg-light-hover light:hover:text-light-text'
+                }`}
+              >
+                {shareCopied ? (
+                  <><Check size={12} />{t.toolbar.shareCopied}</>
+                ) : (
+                  <><Link2 size={12} />{t.toolbar.share}</>
+                )}
+              </button>
+            }
           />
 
           <div className="flex-1 overflow-hidden">
