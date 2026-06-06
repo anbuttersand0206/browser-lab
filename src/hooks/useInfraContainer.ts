@@ -238,20 +238,30 @@ export function useInfraContainer(isEnabled: boolean) {
     setFileTree(tree)
   }, [])
 
-  // バリデーションルールを評価してミッションクリア判定を行う
-  // @webcontainer/api v1 に stat がないため：
-  // - ファイル存在確認は readFile で代替
-  // - ディレクトリ確認は readdir で代替
-  // - パーミッション・シンボリックリンク確認は Node.js スポーンで代替
+  // バリデーションルールを評価してミッションクリア判定を行う。
+  // wc.fs API はホスト側のビューを返すため、jsh プロセスが作成したファイル・ディレクトリを
+  // 即座に反映しないことがある。Node.js プロセスをスポーンすることでコンテナ内の
+  // プロセス名前空間から直接確認し、この不一致を回避する。
   const validate = useCallback(async (rule: ValidationRule): Promise<boolean> => {
     const wc = wcRef.current
     if (!wc) return false
 
+    // Node.js の inline スクリプトを実行して結果を '1'/'0' で取得するヘルパー
+    const spawnNode = async (code: string): Promise<string> => {
+      const proc = await wc.spawn('node', ['-e', code])
+      let out = ''
+      proc.output.pipeTo(new WritableStream({ write(d) { out += d } }))
+      await proc.exit
+      return out.trim()
+    }
+
     switch (rule.type) {
       case 'file_exists': {
         try {
-          await wc.fs.readFile(rule.target)
-          return true
+          const code =
+            `try{require('fs').readFileSync(${JSON.stringify(rule.target)});` +
+            `process.stdout.write('1')}catch{process.stdout.write('0')}`
+          return await spawnNode(code) === '1'
         } catch {
           return false
         }
@@ -259,8 +269,11 @@ export function useInfraContainer(isEnabled: boolean) {
 
       case 'dir_exists': {
         try {
-          await wc.fs.readdir(rule.target)
-          return true
+          // readdirSync が成功すればディレクトリが存在する（空でも例外を投げない）
+          const code =
+            `try{require('fs').readdirSync(${JSON.stringify(rule.target)});` +
+            `process.stdout.write('1')}catch{process.stdout.write('0')}`
+          return await spawnNode(code) === '1'
         } catch {
           return false
         }
@@ -268,40 +281,33 @@ export function useInfraContainer(isEnabled: boolean) {
 
       case 'file_content': {
         try {
-          const content = await wc.fs.readFile(rule.target, 'utf-8')
-          return content.includes(rule.expected)
+          const code =
+            `try{const c=require('fs').readFileSync(${JSON.stringify(rule.target)},'utf-8');` +
+            `process.stdout.write(c.includes(${JSON.stringify(rule.expected)})?'1':'0')}` +
+            `catch{process.stdout.write('0')}`
+          return await spawnNode(code) === '1'
         } catch {
           return false
         }
       }
 
       case 'permission': {
-        // stat がないため Node.js の fs.statSync を経由してパーミッションを取得する
         try {
           const code =
-            `try{const s=require('fs').statSync('${rule.target}');` +
+            `try{const s=require('fs').statSync(${JSON.stringify(rule.target)});` +
             `process.stdout.write((s.mode&0o777).toString(8))}catch{process.stdout.write('err')}`
-          const proc = await wc.spawn('node', ['-e', code])
-          let out = ''
-          proc.output.pipeTo(new WritableStream({ write(d) { out += d } }))
-          await proc.exit
-          return out.trim() === rule.expected
+          return await spawnNode(code) === rule.expected
         } catch {
           return false
         }
       }
 
       case 'symlink_exists': {
-        // lstat でシンボリックリンク自体の情報を確認する
         try {
           const code =
-            `try{const s=require('fs').lstatSync('${rule.target}');` +
+            `try{const s=require('fs').lstatSync(${JSON.stringify(rule.target)});` +
             `process.stdout.write(s.isSymbolicLink()?'1':'0')}catch{process.stdout.write('0')}`
-          const proc = await wc.spawn('node', ['-e', code])
-          let out = ''
-          proc.output.pipeTo(new WritableStream({ write(d) { out += d } }))
-          await proc.exit
-          return out.trim() === '1'
+          return await spawnNode(code) === '1'
         } catch {
           return false
         }
