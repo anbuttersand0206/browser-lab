@@ -26,6 +26,9 @@ import { DPTableVisualizer } from './visualizers/DPTableVisualizer'
 import { MazeVisualizer } from './visualizers/MazeVisualizer'
 import { ScatterVisualizer } from './visualizers/ScatterVisualizer'
 import { DecisionTreeVisualizer } from './visualizers/DecisionTreeVisualizer'
+import { LinkedListVisualizer } from './visualizers/LinkedListVisualizer'
+import { BSTVisualizer } from './visualizers/BSTVisualizer'
+import { HashTableVisualizer } from './visualizers/HashTableVisualizer'
 import { useI18n } from '../../i18n'
 
 const SPEED_DELAY_MS = [1200, 500, 200, 80, 20]
@@ -263,6 +266,9 @@ function InternalVisualizerSwitch({
     case 'scatter':
       return <ScatterVisualizer state={state} mode={algorithmId === 'svm' ? 'svm' : 'pca'} />
     case 'decisionTree':  return <DecisionTreeVisualizer state={state} />
+    case 'linkedList':    return <LinkedListVisualizer state={state} />
+    case 'bst':           return <BSTVisualizer state={state} />
+    case 'hashTable':     return <HashTableVisualizer state={state} />
     default:              return null
   }
 }

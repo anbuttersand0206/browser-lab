@@ -27,6 +27,9 @@ import { DPTableVisualizer } from '../../components/AlgorithmViewer/visualizers/
 import { MazeVisualizer } from '../../components/AlgorithmViewer/visualizers/MazeVisualizer'
 import { ScatterVisualizer } from '../../components/AlgorithmViewer/visualizers/ScatterVisualizer'
 import { DecisionTreeVisualizer } from '../../components/AlgorithmViewer/visualizers/DecisionTreeVisualizer'
+import { LinkedListVisualizer } from '../../components/AlgorithmViewer/visualizers/LinkedListVisualizer'
+import { BSTVisualizer } from '../../components/AlgorithmViewer/visualizers/BSTVisualizer'
+import { HashTableVisualizer } from '../../components/AlgorithmViewer/visualizers/HashTableVisualizer'
 import { MobileWarning } from '../../components/MobileWarning/MobileWarning'
 import { AlgorithmRunnerPanel } from '../../components/AlgorithmViewer/AlgorithmRunnerPanel'
 
@@ -205,7 +208,7 @@ export default function AlgorithmPage() {
   const visualizerType = meta.visualizerType
 
   const [collapsed, setCollapsed] = useState<Record<AlgorithmCategory, boolean>>({
-    sort: false, search: false, classic: false, ml: false,
+    sort: false, search: false, classic: false, ml: false, datastructures: false,
   })
 
   const toggleTheme = () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
@@ -465,6 +468,9 @@ function VisualizerSwitch({
     case 'scatter':
       return <ScatterVisualizer state={state} mode={algorithmId === 'svm' ? 'svm' : 'pca'} />
     case 'decisionTree':  return <DecisionTreeVisualizer state={state} />
+    case 'linkedList':    return <LinkedListVisualizer state={state} />
+    case 'bst':           return <BSTVisualizer state={state} />
+    case 'hashTable':     return <HashTableVisualizer state={state} />
     default:              return null
   }
 }

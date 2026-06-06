@@ -7,6 +7,7 @@ import type {
   ConvConfig, PoolingConfig, KMeansConfig, PerceptronConfig,
   GraphAlgoConfig, StringSearchConfig, KnapsackConfig, LevenshteinConfig,
   MazeConfig, ScatterConfig, DecisionTreeConfig,
+  LinkedListConfig, BSTConfig, HashTableConfig,
 } from './types'
 import { bubbleSort } from './sort/bubbleSort'
 import { selectionSort } from './sort/selectionSort'
@@ -45,6 +46,9 @@ import { mazeGeneration } from './dp/mazeGeneration'
 import { svm } from './ml/svm'
 import { pca } from './ml/pca'
 import { decisionTree } from './ml/decisionTree'
+import { linkedList } from './datastructures/linkedList'
+import { bst } from './datastructures/bst'
+import { hashTable } from './datastructures/hashTable'
 
 export type AlgorithmId =
   | 'bubble' | 'selection' | 'insertion' | 'merge' | 'quick' | 'heap'
@@ -57,8 +61,9 @@ export type AlgorithmId =
   | 'kmp' | 'boyerMoore'
   | 'knapsack' | 'levenshtein' | 'mazeGeneration'
   | 'svm' | 'pca' | 'decisionTree'
+  | 'linkedList' | 'bst' | 'hashTable'
 
-export type AlgorithmCategory = 'sort' | 'search' | 'classic' | 'ml'
+export type AlgorithmCategory = 'sort' | 'search' | 'classic' | 'ml' | 'datastructures'
 
 // ビジュアライザーコンポーネントとアルゴリズムを対応させるための識別子。
 // 同じ visualizerType を持つアルゴリズムは同じコンポーネントで描画される（例: BFS・DFS・A* は全て 'grid'）。
@@ -83,6 +88,9 @@ export type VisualizerType =
   | 'maze'
   | 'scatter'
   | 'decisionTree'
+  | 'linkedList'
+  | 'bst'
+  | 'hashTable'
 
 export interface AlgorithmMeta {
   id: AlgorithmId
@@ -131,22 +139,26 @@ export const ALGORITHMS: AlgorithmMeta[] = [
   { id: 'pooling',      category: 'ml',      visualizerType: 'pooling',       complexities: { best: 'O(n²)',      average: 'O(n²)',     worst: 'O(n²)',     space: 'O(n²)' } },
   { id: 'kmeans',       category: 'ml',      visualizerType: 'kmeans',        complexities: { best: 'O(nki)',     average: 'O(nki)',    worst: 'O(nki)',    space: 'O(n+k)' } },
   { id: 'perceptron',   category: 'ml',      visualizerType: 'perceptron',    complexities: { best: 'O(n)',       average: 'O(n·e)',    worst: 'O(n·e)',    space: 'O(w)' } },
-  { id: 'svm',          category: 'ml',      visualizerType: 'scatter',       complexities: { best: 'O(n)',       average: 'O(n²)',     worst: 'O(n³)',     space: 'O(n)' } },
-  { id: 'pca',          category: 'ml',      visualizerType: 'scatter',       complexities: { best: 'O(nd²)',     average: 'O(nd²)',    worst: 'O(nd²)',    space: 'O(d²)' } },
-  { id: 'decisionTree', category: 'ml',      visualizerType: 'decisionTree',  complexities: { best: 'O(n log n)', average: 'O(n² log n)',worst: 'O(n²)',   space: 'O(n)' } },
+  { id: 'svm',          category: 'ml',             visualizerType: 'scatter',       complexities: { best: 'O(n)',   average: 'O(n²)',      worst: 'O(n³)',      space: 'O(n)' } },
+  { id: 'pca',          category: 'ml',             visualizerType: 'scatter',       complexities: { best: 'O(nd²)', average: 'O(nd²)',     worst: 'O(nd²)',     space: 'O(d²)' } },
+  { id: 'decisionTree', category: 'ml',             visualizerType: 'decisionTree',  complexities: { best: 'O(n log n)', average: 'O(n² log n)', worst: 'O(n²)', space: 'O(n)' } },
+  { id: 'linkedList',   category: 'datastructures', visualizerType: 'linkedList',    complexities: { best: 'O(1)',   average: 'O(n)',       worst: 'O(n)',       space: 'O(n)' } },
+  { id: 'bst',          category: 'datastructures', visualizerType: 'bst',           complexities: { best: 'O(log n)', average: 'O(log n)', worst: 'O(n)',       space: 'O(n)' } },
+  { id: 'hashTable',    category: 'datastructures', visualizerType: 'hashTable',     complexities: { best: 'O(1)',   average: 'O(1)',       worst: 'O(n)',       space: 'O(n)' } },
 ]
 
 export const ALGORITHM_BY_ID = Object.fromEntries(
   ALGORITHMS.map(a => [a.id, a])
 ) as Record<AlgorithmId, AlgorithmMeta>
 
-export const CATEGORIES: AlgorithmCategory[] = ['sort', 'search', 'classic', 'ml']
+export const CATEGORIES: AlgorithmCategory[] = ['sort', 'search', 'classic', 'ml', 'datastructures']
 
 export const BY_CATEGORY: Record<AlgorithmCategory, AlgorithmMeta[]> = {
-  sort:    ALGORITHMS.filter(a => a.category === 'sort'),
-  search:  ALGORITHMS.filter(a => a.category === 'search'),
-  classic: ALGORITHMS.filter(a => a.category === 'classic'),
-  ml:      ALGORITHMS.filter(a => a.category === 'ml'),
+  sort:           ALGORITHMS.filter(a => a.category === 'sort'),
+  search:         ALGORITHMS.filter(a => a.category === 'search'),
+  classic:        ALGORITHMS.filter(a => a.category === 'classic'),
+  ml:             ALGORITHMS.filter(a => a.category === 'ml'),
+  datastructures: ALGORITHMS.filter(a => a.category === 'datastructures'),
 }
 
 // ソートアルゴリズムのデフォルト入力として使うランダム配列を生成する（フィッシャー–イェーツ法）
@@ -249,6 +261,10 @@ export function defaultConfig(id: AlgorithmId): AlgorithmConfig {
 
     case 'decisionTree':
       return { dataType: 'simple', maxDepth: 3 } satisfies DecisionTreeConfig
+
+    case 'linkedList': return { _brand: 'linkedList' } satisfies LinkedListConfig
+    case 'bst':        return { _brand: 'bst'        } satisfies BSTConfig
+    case 'hashTable':  return { _brand: 'hashTable'  } satisfies HashTableConfig
   }
 }
 
@@ -338,6 +354,10 @@ export function createGenerator(id: AlgorithmId, config: AlgorithmConfig): Gener
       const c = config as DecisionTreeConfig
       return decisionTree(c.dataType, c.maxDepth)
     }
+
+    case 'linkedList': return linkedList()
+    case 'bst':        return bst()
+    case 'hashTable':  return hashTable()
   }
 }
 

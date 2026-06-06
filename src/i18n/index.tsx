@@ -330,6 +330,7 @@ interface AlgorithmTranslations {
     search: string
     classic: string
     ml: string
+    datastructures: string
   }
   controls: {
     play: string
@@ -667,7 +668,7 @@ const ja: Translations = {
     pageTitle: 'アルゴリズム可視化',
     pageSubtitle: 'アルゴリズムの動きを目で見て、肌で感じる',
     selectPrompt: '左のリストからアルゴリズムを選んでください',
-    categories: { sort: 'ソートアルゴリズム', search: '探索アルゴリズム', classic: 'クラシック', ml: '機械学習の基礎' },
+    categories: { sort: 'ソートアルゴリズム', search: '探索アルゴリズム', classic: 'クラシック', ml: '機械学習の基礎', datastructures: 'データ構造' },
     controls: {
       play: '再生', pause: '一時停止', step: 'ステップ実行', stepBack: '1ステップ戻る', reset: 'リセット',
       speed: '速度', speedLabels: ['最低速', '遅い', '標準', '速い', '最高速'],
@@ -962,6 +963,27 @@ const ja: Translations = {
         best: 'O(n log n)', average: 'O(n² log n)', worst: 'O(n²)', space: 'O(n)',
         useCases: '医療診断・信用スコアリング・顧客分類・特徴重要度の解釈・アンサンブル学習（Random Forest）の基礎。',
         visualGuide: '各ノードの分割条件（x ≤ 閾値）と不純度の変化に注目。葉ノードが最終的な予測クラス。',
+      },
+      linkedList: {
+        name: '連結リスト',
+        description: '各ノードが「値」と「次ノードへのポインタ」を持つ線形データ構造。先頭挿入は O(1) だが末尾挿入・検索は O(n) の走査が必要。',
+        best: 'O(1)', average: 'O(n)', worst: 'O(n)', space: 'O(n)',
+        useCases: 'キュー・スタックの実装基盤。頻繁な挿入・削除が中間位置で起きる場合に配列より有利。',
+        visualGuide: '黄色が現在走査中のノード、シアンが挿入されたノード、緑が発見されたノード。HEAD ポインタから辿る流れを追う。',
+      },
+      bst: {
+        name: '二分探索木 (BST)',
+        description: '各ノードについて「左の子 < 自分 < 右の子」という性質を持つ木構造。挿入・検索ともに平均 O(log n)、最悪（退化した場合）O(n)。',
+        best: 'O(log n)', average: 'O(log n)', worst: 'O(n)', space: 'O(n)',
+        useCases: '辞書・集合・範囲検索。自己平衡BST（AVL木・赤黒木）の基礎。データベースのインデックス。',
+        visualGuide: '黄色が比較中のノード、青が走査済みパス、シアンが新規挿入、緑が発見。左右どちらに進むかの判断に注目。',
+      },
+      hashTable: {
+        name: 'ハッシュテーブル',
+        description: 'ハッシュ関数でキーをバケットに写像し、O(1) 平均で挿入・検索を実現するデータ構造。衝突はチェーン法（連結リスト）で解決する。',
+        best: 'O(1)', average: 'O(1)', worst: 'O(n)', space: 'O(n)',
+        useCases: '連想配列・キャッシュ・重複検出・データベースのハッシュインデックス。Python の dict / Java の HashMap の内部実装。',
+        visualGuide: 'ハッシュ値が計算されてバケットが選択される瞬間と、衝突時にチェーンを線形探索する様子に注目。',
       },
     },
   },
@@ -1298,7 +1320,7 @@ const en: Translations = {
     pageTitle: 'Algorithm Visualizer',
     pageSubtitle: 'See and feel how algorithms work',
     selectPrompt: 'Select an algorithm from the list on the left',
-    categories: { sort: 'Sorting', search: 'Searching', classic: 'Classics', ml: 'ML Basics' },
+    categories: { sort: 'Sorting', search: 'Searching', classic: 'Classics', ml: 'ML Basics', datastructures: 'Data Structures' },
     controls: {
       play: 'Play', pause: 'Pause', step: 'Step', stepBack: 'Step Back', reset: 'Reset',
       speed: 'Speed', speedLabels: ['Slowest', 'Slow', 'Normal', 'Fast', 'Fastest'],
@@ -1593,6 +1615,27 @@ const en: Translations = {
         best: 'O(n log n)', average: 'O(n² log n)', worst: 'O(n²)', space: 'O(n)',
         useCases: 'Medical diagnosis, credit scoring, customer segmentation, feature importance, Random Forest base learner.',
         visualGuide: 'Each node shows its split condition and Gini impurity. Leaf nodes show the predicted class.',
+      },
+      linkedList: {
+        name: 'Linked List',
+        description: 'A linear data structure where each node holds a value and a pointer to the next node. Front insertion is O(1); back insertion and search require O(n) traversal.',
+        best: 'O(1)', average: 'O(n)', worst: 'O(n)', space: 'O(n)',
+        useCases: 'Underlying structure for queues and stacks. Preferred over arrays when frequent mid-list insertions/deletions are needed.',
+        visualGuide: 'Yellow = node currently being traversed. Cyan = newly inserted node. Green = found node. Follow the HEAD pointer chain.',
+      },
+      bst: {
+        name: 'Binary Search Tree (BST)',
+        description: 'A tree where every node satisfies: left subtree < node < right subtree. Average O(log n) for insert and search; degenerates to O(n) on a sorted input.',
+        best: 'O(log n)', average: 'O(log n)', worst: 'O(n)', space: 'O(n)',
+        useCases: 'Dictionaries, sets, range queries. Basis for self-balancing trees (AVL, Red-Black). Database index structures.',
+        visualGuide: 'Yellow = node being compared. Blue = visited path. Cyan = newly inserted. Green = found. Watch which branch is chosen at each comparison.',
+      },
+      hashTable: {
+        name: 'Hash Table (Chaining)',
+        description: 'Maps keys to buckets via a hash function for O(1) average insert and lookup. Collisions are resolved by chaining (linked list per bucket).',
+        best: 'O(1)', average: 'O(1)', worst: 'O(n)', space: 'O(n)',
+        useCases: 'Associative arrays, caches, duplicate detection, hash indexes in databases. Underlying structure of Python dict and Java HashMap.',
+        visualGuide: 'Watch the hash computation select a bucket, then observe linear traversal within the chain for collision resolution.',
       },
     },
   },

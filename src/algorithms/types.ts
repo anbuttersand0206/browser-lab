@@ -295,6 +295,9 @@ export type AlgorithmConfig =
   | MazeConfig
   | ScatterConfig
   | DecisionTreeConfig
+  | LinkedListConfig
+  | BSTConfig
+  | HashTableConfig
 
 // ---- グラフ（ダイクストラ・ベルマンフォード・クラスカル・プリム） ----
 
@@ -487,4 +490,89 @@ export interface ScatterConfig {
 export interface DecisionTreeConfig {
   dataType: 'simple' | 'complex'
   maxDepth: number
+}
+
+// ---- 連結リスト ----
+
+export interface LLNode {
+  id: string
+  value: number
+}
+
+// 連結リストで実行される操作の種別
+export type LLOperation = 'insert_front' | 'insert_back' | 'search' | 'delete'
+
+// アニメーションの現在フェーズ
+export type LLPhase = 'traverse' | 'insert' | 'found' | 'not_found' | 'done'
+
+export interface LinkedListState {
+  nodes: LLNode[]
+  // 現在ハイライト中のノードインデックス（null = 強調なし）
+  currentIndex: number | null
+  targetValue: number
+  operation: LLOperation
+  // 発見・確定したノードのインデックス（緑ハイライト用）
+  foundIndex: number | null
+  phase: LLPhase
+  done: boolean
+}
+
+// 固定シナリオで動作するためパラメーター不要
+export interface LinkedListConfig {
+  _brand: 'linkedList'
+}
+
+// ---- 二分探索木 ----
+
+export interface BSTNodeData {
+  id: string
+  value: number
+  leftId: string | null
+  rightId: string | null
+  // ルートからの深さ（ビジュアライザーの縦方向レイアウト計算に使用）
+  depth: number
+}
+
+export interface BSTState {
+  nodes: Record<string, BSTNodeData>
+  rootId: string | null
+  // 現在比較中のノードID（黄色ハイライト）
+  comparingId: string | null
+  // 走査済みパスのノードIDリスト（薄い青でハイライト）
+  visitedIds: string[]
+  // 新規挿入されたノードID（シアンハイライト）
+  newNodeId: string | null
+  // 検索で発見したノードID（緑ハイライト）
+  foundId: string | null
+  operation: 'insert' | 'search'
+  targetValue: number
+  done: boolean
+}
+
+// 固定シナリオで動作するためパラメーター不要
+export interface BSTConfig {
+  _brand: 'bst'
+}
+
+// ---- ハッシュテーブル ----
+
+export interface HashTableState {
+  // buckets[i] = バケット i に格納された値の配列（チェーン法）
+  buckets: number[][]
+  tableSize: number
+  // 現在処理中の値（null = 処理なし）
+  currentValue: number | null
+  // 計算済みのハッシュインデックス（null = まだ計算していない）
+  hashIndex: number | null
+  // チェーン内の走査インデックス（比較中のエントリ）
+  chainIndex: number | null
+  operation: 'insert' | 'search'
+  found: boolean | null
+  phase: 'idle' | 'hashing' | 'traversing' | 'done'
+  done: boolean
+}
+
+// 固定シナリオで動作するためパラメーター不要
+export interface HashTableConfig {
+  _brand: 'hashTable'
 }
