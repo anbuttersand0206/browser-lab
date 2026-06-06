@@ -122,6 +122,11 @@ export default function AlgorithmPage() {
     setIsPlaying(prev => !prev)
   }
 
+  const handleStepBack = () => {
+    setIsPlaying(false)
+    setCurrentStep(prev => Math.max(prev - 1, 0))
+  }
+
   const handleStep = () => {
     setIsPlaying(false)
     setCurrentStep(prev => Math.min(prev + 1, steps.length - 1))
@@ -303,7 +308,9 @@ export default function AlgorithmPage() {
               onConfigChange={newCfg => setConfig(newCfg)}
               isPlaying={isPlaying}
               canStep={currentStep < steps.length - 1}
+              canStepBack={currentStep > 0}
               onPlay={handlePlay}
+              onStepBack={handleStepBack}
               onStep={handleStep}
               onReset={handleReset}
               speedLevel={speedLevel}

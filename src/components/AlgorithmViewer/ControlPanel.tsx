@@ -1,4 +1,4 @@
-import { Play, Pause, SkipForward, RotateCcw, Shuffle } from 'lucide-react'
+import { Play, Pause, SkipBack, SkipForward, RotateCcw, Shuffle } from 'lucide-react'
 import { useI18n } from '../../i18n'
 import type { AlgorithmId, AlgorithmCategory } from '../../algorithms/registry'
 import type { AlgorithmConfig, SortConfig, ArraySearchConfig, HanoiConfig, FibConfig, EuclidConfig, MonteCarloConfig, ConvConfig, PoolingConfig, KMeansConfig, PerceptronConfig } from '../../algorithms/types'
@@ -10,7 +10,9 @@ interface ControlPanelProps {
   onConfigChange: (config: AlgorithmConfig) => void
   isPlaying: boolean
   canStep: boolean
+  canStepBack: boolean
   onPlay: () => void
+  onStepBack: () => void
   onStep: () => void
   onReset: () => void
   speedLevel: number
@@ -21,7 +23,7 @@ const SPEED_DELAYS = [1200, 500, 200, 80, 20]
 
 export function ControlPanel({
   algorithmId, category, config, onConfigChange,
-  isPlaying, canStep, onPlay, onStep, onReset,
+  isPlaying, canStep, canStepBack, onPlay, onStepBack, onStep, onReset,
   speedLevel, onSpeedChange,
 }: ControlPanelProps) {
   const { t } = useI18n()
@@ -38,6 +40,11 @@ export function ControlPanel({
         <button className={primaryBtn} onClick={onPlay}>
           {isPlaying ? <Pause size={13} /> : <Play size={13} />}
           {isPlaying ? alg.controls.pause : alg.controls.play}
+        </button>
+        {/* 1ステップ戻る: ステップが配列に事前生成されているため、インデックスを減らすだけで実現できる */}
+        <button className={secondaryBtn} onClick={onStepBack} disabled={!canStepBack || isPlaying}
+          title={alg.controls.stepBack}>
+          <SkipBack size={13} />
         </button>
         <button className={secondaryBtn} onClick={onStep} disabled={!canStep || isPlaying}>
           <SkipForward size={13} />

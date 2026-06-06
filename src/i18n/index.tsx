@@ -299,6 +299,7 @@ interface AlgorithmTranslations {
     play: string
     pause: string
     step: string
+    stepBack: string
     reset: string
     speed: string
     speedLabels: readonly string[]
@@ -555,7 +556,7 @@ const ja: Translations = {
     selectPrompt: '左のリストからアルゴリズムを選んでください',
     categories: { sort: 'ソートアルゴリズム', search: '探索アルゴリズム', classic: 'クラシック', ml: '機械学習の基礎' },
     controls: {
-      play: '再生', pause: '一時停止', step: 'ステップ実行', reset: 'リセット',
+      play: '再生', pause: '一時停止', step: 'ステップ実行', stepBack: '1ステップ戻る', reset: 'リセット',
       speed: '速度', speedLabels: ['最低速', '遅い', '標準', '速い', '最高速'],
       arraySize: '配列サイズ', randomize: 'ランダム生成', targetValue: '探索値',
       numDisks: '円盤の枚数', nValue: 'n の値', useMemo: 'メモ化を使う',
@@ -1109,7 +1110,7 @@ const en: Translations = {
     selectPrompt: 'Select an algorithm from the list on the left',
     categories: { sort: 'Sorting', search: 'Searching', classic: 'Classics', ml: 'ML Basics' },
     controls: {
-      play: 'Play', pause: 'Pause', step: 'Step', reset: 'Reset',
+      play: 'Play', pause: 'Pause', step: 'Step', stepBack: 'Step Back', reset: 'Reset',
       speed: 'Speed', speedLabels: ['Slowest', 'Slow', 'Normal', 'Fast', 'Fastest'],
       arraySize: 'Array Size', randomize: 'Randomize', targetValue: 'Search Target',
       numDisks: 'Number of Disks', nValue: 'n value', useMemo: 'Use Memoization',
