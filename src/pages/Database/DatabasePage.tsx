@@ -26,6 +26,8 @@ import { encodeShare, decodeShare, readShareFromHash } from '../../lib/shareUrl'
 import { saveToIndexedDb, loadFromIndexedDb } from '../../lib/progressStorage'
 import { CODE_THEMES, type CodeThemeId } from '../../lib/editorThemes'
 import { useCodeTheme } from '../../hooks/useCodeTheme'
+import { MobileWarning } from '../../components/MobileWarning/MobileWarning'
+import { ErDiagram } from '../../components/DBClient/ErDiagram/ErDiagram'
 
 // リサイズ可能な3ペインのサイズをまとめて管理する
 interface PaneSizes {
@@ -166,6 +168,9 @@ export default function DatabasePage() {
   // queryHistory は JSON エクスポート用に実行済みクエリを蓄積する
   const [queryHistory, setQueryHistory] = useState<QueryResult[]>([])
   const [isExecuting, setIsExecuting] = useState(false)
+  // サイドバーの表示モード: テーブルツリー or ER図
+  type SidebarTab = 'tables' | 'er'
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('tables')
   // 共有リンクのコピー完了フィードバック用。2 秒後に自動でリセットする。
   const [shareCopied, setShareCopied] = useState(false)
   const { codeThemeId, setCodeThemeId } = useCodeTheme()
@@ -489,6 +494,8 @@ export default function DatabasePage() {
 
   return (
     <div className="flex h-full flex-col bg-dark-bg dark:bg-dark-bg light:bg-light-bg">
+      {/* モバイル端末向け警告バナー（sm 以上は CSS で非表示） */}
+      <MobileWarning />
       <div className="flex h-9 flex-shrink-0 items-center gap-2 border-b border-dark-border bg-dark-tab px-3 dark:border-dark-border dark:bg-dark-tab light:border-light-border light:bg-light-tab">
         <button
           onClick={() => guardNavigate(() => navigate('/'), 'トップページに戻る')}
@@ -565,14 +572,55 @@ export default function DatabasePage() {
             ))}
           </div>
 
+          {/* テーブルツリー / ER図 タブ切り替え */}
+          <div
+            role="tablist"
+            aria-label={t.sidebar.tableTree}
+            className="flex border-b border-dark-border dark:border-dark-border light:border-light-border"
+          >
+            {(['tables', 'er'] as const).map((tab) => (
+              <button
+                key={tab}
+                role="tab"
+                id={`db-sidebar-tab-${tab}`}
+                aria-selected={sidebarTab === tab}
+                aria-controls={`db-sidebar-panel-${tab}`}
+                onClick={() => setSidebarTab(tab)}
+                className={`flex-1 py-1.5 text-xs transition-colors ${
+                  sidebarTab === tab
+                    ? 'border-b-2 border-blue-500 text-dark-text dark:text-dark-text light:text-light-text'
+                    : 'text-dark-textDim hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text'
+                }`}
+              >
+                {tab === 'tables' ? t.sidebar.tableTree : t.sidebar.erDiagram}
+              </button>
+            ))}
+          </div>
+
           <div className="flex-1 overflow-auto">
-            <TableTree
-              tables={tables}
-              onTableClick={handleTableClick}
-              onShowSchema={() => setIsSchemaViewOpen(true)}
-            />
-            {/* 実行済みクエリを履歴として表示し、クリックでエディタに再読み込みできる */}
-            <QueryHistory queries={queryHistory} onSelect={updateSql} />
+            <div
+              role="tabpanel"
+              id="db-sidebar-panel-tables"
+              aria-labelledby="db-sidebar-tab-tables"
+              hidden={sidebarTab !== 'tables'}
+            >
+              <TableTree
+                tables={tables}
+                onTableClick={handleTableClick}
+                onShowSchema={() => setIsSchemaViewOpen(true)}
+              />
+              {/* 実行済みクエリを履歴として表示し、クリックでエディタに再読み込みできる */}
+              <QueryHistory queries={queryHistory} onSelect={updateSql} />
+            </div>
+            <div
+              role="tabpanel"
+              id="db-sidebar-panel-er"
+              aria-labelledby="db-sidebar-tab-er"
+              hidden={sidebarTab !== 'er'}
+              className="h-full"
+            >
+              <ErDiagram tables={tables} />
+            </div>
           </div>
         </div>
 

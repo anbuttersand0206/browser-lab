@@ -27,6 +27,7 @@ import { DPTableVisualizer } from '../../components/AlgorithmViewer/visualizers/
 import { MazeVisualizer } from '../../components/AlgorithmViewer/visualizers/MazeVisualizer'
 import { ScatterVisualizer } from '../../components/AlgorithmViewer/visualizers/ScatterVisualizer'
 import { DecisionTreeVisualizer } from '../../components/AlgorithmViewer/visualizers/DecisionTreeVisualizer'
+import { MobileWarning } from '../../components/MobileWarning/MobileWarning'
 
 // 速度レベル 1〜5 に対応する遅延時間（ミリ秒）。
 // 最低速 1200ms は「手動でステップを目で追える」基準、
@@ -211,6 +212,8 @@ export default function AlgorithmPage() {
 
   return (
     <div className="flex h-full flex-col bg-dark-bg dark:bg-dark-bg light:bg-light-bg">
+      {/* モバイル端末向け警告バナー（sm 以上は CSS で非表示） */}
+      <MobileWarning />
       {/* ヘッダー */}
       <div className="flex h-10 flex-shrink-0 items-center gap-3 border-b border-dark-border bg-dark-sidebar px-3 dark:border-dark-border dark:bg-dark-sidebar light:border-light-border light:bg-light-sidebar">
         <button

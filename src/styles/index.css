@@ -25,6 +25,15 @@
     width: 100vw;
     overflow: hidden;
   }
+
+  /* モバイルではスクロール可能にして、コンテンツが画面外にはみ出さないようにする */
+  @media (max-width: 639px) {
+    body, #root {
+      overflow-y: auto;
+      height: auto;
+      min-height: 100svh;
+    }
+  }
 }
 
 @layer components {

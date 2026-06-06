@@ -14,6 +14,7 @@ import { XTerminal } from '../../components/InfraTerminal/Terminal/XTerminal'
 import { FileTreeVisualizer } from '../../components/InfraTerminal/FileTreeVisualizer/FileTreeVisualizer'
 import { MissionPanel } from '../../components/InfraTerminal/MissionPanel/MissionPanel'
 import { infraMissions, INFRA_CATEGORIES, getMissionsByCategory, type InfraMission, type InfraCategory } from '../../missions/infra'
+import { MobileWarning } from '../../components/MobileWarning/MobileWarning'
 
 // ─── 永続化 ──────────────────────────────────────────────────────────────────
 
@@ -312,6 +313,8 @@ export default function InfraPage() {
 
   return (
     <div className="flex h-full flex-col bg-dark-bg dark:bg-dark-bg light:bg-light-bg">
+      {/* モバイル端末向け警告バナー（sm 以上は CSS で非表示） */}
+      <MobileWarning />
       {/* ─── ナビゲーションバー ─────────────────────────────────────────── */}
       <div className="flex h-9 flex-shrink-0 items-center gap-2 border-b border-dark-border bg-dark-tab px-3 dark:border-dark-border dark:bg-dark-tab light:border-light-border light:bg-light-tab">
         <button

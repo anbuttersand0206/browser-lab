@@ -1,8 +1,9 @@
 import { type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FlaskConical, Zap, Database, BrainCircuit, Server, Sun, Moon, ArrowRight, Languages } from 'lucide-react'
+import { FlaskConical, Zap, Database, BrainCircuit, Server, Sun, Moon, ArrowRight, Languages, FileText } from 'lucide-react'
 import { useTheme } from '../../hooks/useTheme'
 import { useI18n } from '../../i18n'
+import { generateProgressReport, downloadMarkdownReport } from '../../lib/progressReport'
 
 export default function TopPage() {
   const navigate = useNavigate()
@@ -13,10 +14,27 @@ export default function TopPage() {
   // 現在のロケールとは反対のロケールに切り替える
   const toggleLocale = () => setLocale(locale === 'ja' ? 'en' : 'ja')
 
+  const handleDownloadReport = () => {
+    const report = generateProgressReport(locale)
+    const dateStr = new Date().toISOString().slice(0, 10)
+    downloadMarkdownReport(report, `browser-lab-report-${dateStr}.md`)
+  }
+
   return (
-    <div className="flex h-full flex-col items-center justify-center bg-dark-bg dark:bg-dark-bg light:bg-light-bg">
-      {/* ヘッダー右上のコントロール群 */}
-      <div className="absolute right-4 top-4 flex items-center gap-2">
+    <div className="flex min-h-full flex-col items-center justify-center bg-dark-bg py-20 dark:bg-dark-bg light:bg-light-bg sm:py-0" role="application" aria-label="Browser Lab">
+      {/* ヘッダー右上のコントロール群。モバイルでは折り返しできるよう flex-wrap を付与 */}
+      <div className="absolute right-2 top-2 flex flex-wrap items-center justify-end gap-1.5 sm:right-4 sm:top-4 sm:gap-2">
+        {/* 学習レポートダウンロードボタン */}
+        <button
+          onClick={handleDownloadReport}
+          title={t.top.downloadReportTooltip}
+          aria-label={t.top.downloadReportTooltip}
+          className="flex items-center gap-1.5 rounded-md border border-dark-border bg-dark-sidebar px-3 py-1.5 text-xs text-dark-textDim transition-colors hover:bg-dark-hover hover:text-dark-text dark:border-dark-border dark:bg-dark-sidebar dark:text-dark-textDim dark:hover:bg-dark-hover dark:hover:text-dark-text light:border-light-border light:bg-light-sidebar light:text-light-textDim light:hover:bg-light-hover light:hover:text-light-text"
+        >
+          <FileText size={13} />
+          {t.top.downloadReport}
+        </button>
+
         {/* 言語切り替えボタン */}
         <button
           onClick={toggleLocale}
@@ -54,8 +72,8 @@ export default function TopPage() {
         </p>
       </div>
 
-      {/* コースカード */}
-      <div className="flex flex-wrap justify-center gap-6 px-6">
+      {/* コースカード。モバイルでは縦に並べ、sm 以上では横に折り返す */}
+      <main aria-label={locale === 'ja' ? 'コース一覧' : 'Course list'} className="flex flex-col items-center gap-4 px-4 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-6 sm:px-6">
         <CourseCard
           icon={<Server size={28} />}
           title={t.top.infraCourse.title}
@@ -103,7 +121,7 @@ export default function TopPage() {
           onClick={() => navigate('/algorithm')}
           color="purple"
         />
-      </div>
+      </main>
     </div>
   )
 }
@@ -142,7 +160,7 @@ function CourseCard({
   return (
     <button
       onClick={onClick}
-      className={`group flex w-80 flex-col rounded-xl border-2 bg-dark-sidebar p-6 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-xl dark:bg-dark-sidebar light:bg-light-sidebar ${accent}`}
+      className={`group flex w-full flex-col rounded-xl border-2 bg-dark-sidebar p-6 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-xl dark:bg-dark-sidebar light:bg-light-sidebar sm:w-80 ${accent}`}
     >
       <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl ${iconBg}`}>
         {icon}

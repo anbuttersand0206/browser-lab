@@ -60,6 +60,8 @@ export interface Translations {
     }
     includedScenarios: string
     startCourse: string
+    downloadReport: string
+    downloadReportTooltip: string
   }
 
   // ナビゲーションバー
@@ -126,6 +128,8 @@ export interface Translations {
     customScenarios: string
     importCustomScenario: string
     deleteCustomScenario: string
+    erDiagram: string
+    tableTree: string
   }
 
   // シナリオパネル
@@ -223,6 +227,12 @@ export interface Translations {
     customScenarioImported: (title: string) => string
     customScenarioError: (reason: string) => string
     deleteCustomScenario: (title: string) => string
+  }
+
+  // モバイル向けメッセージ
+  mobile: {
+    desktopRecommended: string
+    dismissWarning: string
   }
 
   // アルゴリズム可視化コース
@@ -398,6 +408,8 @@ const ja: Translations = {
     },
     includedScenarios: '収録シナリオ',
     startCourse: 'コースを開始',
+    downloadReport: 'レポート',
+    downloadReportTooltip: '学習進捗をMarkdownファイルでダウンロード',
   },
   nav: {
     dbCourse: 'DB学習コース',
@@ -454,6 +466,8 @@ const ja: Translations = {
     customScenarios: 'カスタム',
     importCustomScenario: '＋ 読み込む',
     deleteCustomScenario: 'カスタムシナリオを削除',
+    erDiagram: 'ER図',
+    tableTree: 'テーブル',
   },
   scenarioPanel: {
     ariaLabel: 'シナリオパネル',
@@ -574,6 +588,10 @@ const ja: Translations = {
     customScenarioImported: (title) => `カスタムシナリオ「${title}」を読み込みました。`,
     customScenarioError: (reason) => `カスタムシナリオの読み込みエラー: ${reason}`,
     deleteCustomScenario: (title) => `カスタムシナリオ「${title}」を削除しますか？`,
+  },
+  mobile: {
+    desktopRecommended: 'このページはデスクトップでの利用を推奨します。モバイルでは一部機能（ターミナル・リサイズ）が正常に動作しない場合があります。',
+    dismissWarning: '警告を閉じる',
   },
   algorithm: {
     pageTitle: 'アルゴリズム可視化',
@@ -965,6 +983,8 @@ const en: Translations = {
     },
     includedScenarios: 'Included Scenarios',
     startCourse: 'Start Course',
+    downloadReport: 'Report',
+    downloadReportTooltip: 'Download your learning progress as a Markdown file',
   },
   nav: {
     dbCourse: 'Database Course',
@@ -1021,6 +1041,8 @@ const en: Translations = {
     customScenarios: 'Custom',
     importCustomScenario: '+ Import',
     deleteCustomScenario: 'Delete custom scenario',
+    erDiagram: 'ER Diagram',
+    tableTree: 'Tables',
   },
   scenarioPanel: {
     ariaLabel: 'Scenario panel',
@@ -1141,6 +1163,10 @@ const en: Translations = {
     customScenarioImported: (title) => `Custom scenario "${title}" loaded successfully.`,
     customScenarioError: (reason) => `Custom scenario error: ${reason}`,
     deleteCustomScenario: (title) => `Delete custom scenario "${title}"?`,
+  },
+  mobile: {
+    desktopRecommended: 'This page is best experienced on a desktop. Some features (terminal, panel resize) may not work correctly on mobile.',
+    dismissWarning: 'Dismiss warning',
   },
   algorithm: {
     pageTitle: 'Algorithm Visualizer',
