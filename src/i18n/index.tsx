@@ -60,6 +60,8 @@ export interface Translations {
     }
     includedScenarios: string
     startCourse: string
+    downloadReport: string
+    downloadReportTooltip: string
   }
 
   // ナビゲーションバー
@@ -99,6 +101,10 @@ export interface Translations {
     executing: string
     run: string
     stop: string
+    share: string
+    shareCopied: string
+    shareTooltip: string
+    codeTheme: string
   }
 
   // コンソールパネル
@@ -119,6 +125,11 @@ export interface Translations {
     newFilePlaceholder: string
     createFileAriaLabel: string
     cancelAriaLabel: string
+    customScenarios: string
+    importCustomScenario: string
+    deleteCustomScenario: string
+    erDiagram: string
+    tableTree: string
   }
 
   // シナリオパネル
@@ -156,6 +167,10 @@ export interface Translations {
     diffAdded: (n: number) => string
     diffRemoved: (n: number) => string
     diffEqual: (n: number) => string
+
+    // クリア条件チェックリスト
+    clearCriteriaLabel: string
+    clearCheckNotYet: string
   }
 
   // 未保存モーダル
@@ -213,6 +228,29 @@ export interface Translations {
     snapshotApplied: string
     snapshotAdded: string
     importError: (reason: string) => string
+    customScenarioImported: (title: string) => string
+    customScenarioError: (reason: string) => string
+    deleteCustomScenario: (title: string) => string
+  }
+
+  // モバイル向けメッセージ
+  mobile: {
+    desktopRecommended: string
+    dismissWarning: string
+  }
+
+  // チュートリアル（初回訪問ガイド）
+  tutorial: {
+    title: string
+    skipButton: string
+    prevButton: string
+    nextButton: string
+    doneButton: string
+    steps: readonly {
+      title: string
+      description: string
+      tips: readonly string[]
+    }[]
   }
 
   // アルゴリズム可視化コース
@@ -235,6 +273,7 @@ interface InfraTranslations {
     text: string
     process: string
     shell: string
+    network: string
   }
   ui: {
     statusIdle: string
@@ -250,6 +289,7 @@ interface InfraTranslations {
     hintsLabel: string
     answerLabel: string
     commandsLabel: string
+    processLabel: string
     showHintButton: (revealed: number, total: number) => string
     allHintsShown: string
     showAnswerButton: string
@@ -257,6 +297,11 @@ interface InfraTranslations {
     answerWarning: string
     clearBanner: string
     nextMissionButton: string
+    validationLabel: string
+    validationCheckNow: string
+    validationLastPassed: string
+    validationLastFailed: string
+    validationPollingNote: string
     leaveWarningTitle: string
     leaveWarningMessage: string
     leaveCancel: string
@@ -294,11 +339,13 @@ interface AlgorithmTranslations {
     search: string
     classic: string
     ml: string
+    datastructures: string
   }
   controls: {
     play: string
     pause: string
     step: string
+    stepBack: string
     reset: string
     speed: string
     speedLabels: readonly string[]
@@ -324,6 +371,10 @@ interface AlgorithmTranslations {
     wallMode: string
     startMode: string
     goalMode: string
+    customArray: string
+    customArrayPlaceholder: string
+    customArrayApply: string
+    customArrayError: string
   }
   stepLog: {
     title: string
@@ -344,6 +395,12 @@ interface AlgorithmTranslations {
   nav: {
     backToTop: string
     algorithmCourse: string
+  }
+  compareMode: {
+    enable: string
+    disable: string
+    leftPanel: string
+    rightPanel: string
   }
 }
 
@@ -382,6 +439,8 @@ const ja: Translations = {
     },
     includedScenarios: '収録シナリオ',
     startCourse: 'コースを開始',
+    downloadReport: 'レポート',
+    downloadReportTooltip: '学習進捗をMarkdownファイルでダウンロード',
   },
   nav: {
     dbCourse: 'DB学習コース',
@@ -415,6 +474,10 @@ const ja: Translations = {
     executing: '実行中...',
     run: '実行',
     stop: '停止',
+    share: '共有',
+    shareCopied: 'リンクをコピーしました',
+    shareTooltip: '現在のコードをURLで共有する',
+    codeTheme: 'コードテーマ',
   },
   console: {
     consoleTab: 'コンソール',
@@ -431,6 +494,11 @@ const ja: Translations = {
     newFilePlaceholder: 'filename.ts',
     createFileAriaLabel: 'ファイルを作成',
     cancelAriaLabel: 'キャンセル',
+    customScenarios: 'カスタム',
+    importCustomScenario: '＋ 読み込む',
+    deleteCustomScenario: 'カスタムシナリオを削除',
+    erDiagram: 'ER図',
+    tableTree: 'テーブル',
   },
   scenarioPanel: {
     ariaLabel: 'シナリオパネル',
@@ -460,6 +528,8 @@ const ja: Translations = {
     diffAdded: (n) => `+${n}行`,
     diffRemoved: (n) => `−${n}行`,
     diffEqual: (n) => `(${n}行一致)`,
+    clearCriteriaLabel: 'クリア条件',
+    clearCheckNotYet: '実行後に結果が表示されます',
   },
   unsavedModal: {
     title: '未保存の変更があります',
@@ -548,14 +618,70 @@ const ja: Translations = {
     snapshotAdded:
       'DBスナップショットを seed.sql として追加しました。\n「実行」するとDBが復元された状態でコードが動きます。',
     importError: (reason) => `読み込みエラー: ${reason}`,
+    customScenarioImported: (title) => `カスタムシナリオ「${title}」を読み込みました。`,
+    customScenarioError: (reason) => `カスタムシナリオの読み込みエラー: ${reason}`,
+    deleteCustomScenario: (title) => `カスタムシナリオ「${title}」を削除しますか？`,
+  },
+  mobile: {
+    desktopRecommended: 'このページはデスクトップでの利用を推奨します。モバイルでは一部機能（ターミナル・リサイズ）が正常に動作しない場合があります。',
+    dismissWarning: '警告を閉じる',
+  },
+  tutorial: {
+    title: 'Browser Lab へようこそ',
+    skipButton: 'スキップ',
+    prevButton: '← 前へ',
+    nextButton: '次へ →',
+    doneButton: '始める',
+    steps: [
+      {
+        title: 'インフラ学習コース',
+        description: 'ブラウザ上で本物の Linux ターミナルを操作しながらインフラの基礎を学べます。',
+        tips: [
+          'ターミナルにコマンドを入力して操作する',
+          'ミッション判定は自動で行われる（5 秒ごとにチェック）',
+          'ヒント・解答を段階的に開示できる',
+          '右パネルのネットワーク図でコンテキストを把握',
+        ],
+      },
+      {
+        title: 'プログラミングコース',
+        description: 'WebContainers を使ったブラウザ内 Node.js / TypeScript 実行環境でコーディングを学べます。',
+        tips: [
+          'Ctrl+Enter でコードを実行',
+          '採点は出力を自動チェックして行われる',
+          '差分タブで模範解答との違いを確認',
+          'カスタムシナリオを JSON で読み込める',
+        ],
+      },
+      {
+        title: 'DB 学習コース',
+        description: 'PGLite を使ったブラウザ内 PostgreSQL で SQL を実践的に学べます。',
+        tips: [
+          'Ctrl+Enter で SQL を実行',
+          'ER 図タブでスキーマを可視化',
+          'SQL フォーマッターで整形できる',
+          'スナップショット機能でDB状態をエクスポート',
+        ],
+      },
+      {
+        title: 'アルゴリズム可視化コース',
+        description: '37 種のアルゴリズムをステップ実行・速度調整しながら視覚的に学べます。',
+        tips: [
+          '再生・一時停止・ステップ実行でペースを調整',
+          '1ステップ戻る機能で動きを丁寧に追える',
+          'ソートに任意の数値配列を入力して試せる',
+          'グリッドアルゴリズムは壁・スタート・ゴールを自由配置',
+        ],
+      },
+    ],
   },
   algorithm: {
     pageTitle: 'アルゴリズム可視化',
     pageSubtitle: 'アルゴリズムの動きを目で見て、肌で感じる',
     selectPrompt: '左のリストからアルゴリズムを選んでください',
-    categories: { sort: 'ソートアルゴリズム', search: '探索アルゴリズム', classic: 'クラシック', ml: '機械学習の基礎' },
+    categories: { sort: 'ソートアルゴリズム', search: '探索アルゴリズム', classic: 'クラシック', ml: '機械学習の基礎', datastructures: 'データ構造' },
     controls: {
-      play: '再生', pause: '一時停止', step: 'ステップ実行', reset: 'リセット',
+      play: '再生', pause: '一時停止', step: 'ステップ実行', stepBack: '1ステップ戻る', reset: 'リセット',
       speed: '速度', speedLabels: ['最低速', '遅い', '標準', '速い', '最高速'],
       arraySize: '配列サイズ', randomize: 'ランダム生成', targetValue: '探索値',
       numDisks: '円盤の枚数', nValue: 'n の値', useMemo: 'メモ化を使う',
@@ -566,6 +692,8 @@ const ja: Translations = {
       clickToToggleWall: 'クリックで壁を切り替え', clearWalls: '壁をクリア',
       kernelType: 'カーネル', dataType: '学習データ',
       wallMode: '壁', startMode: 'スタート', goalMode: 'ゴール',
+      customArray: 'カスタム配列', customArrayPlaceholder: '例: 5,3,1,8,2',
+      customArrayApply: '適用', customArrayError: '2〜30個の整数をカンマ区切りで入力してください',
     },
     stepLog: {
       title: 'ステップログ',
@@ -581,6 +709,12 @@ const ja: Translations = {
       visualGuide: 'どこを見るべきか',
     },
     nav: { backToTop: 'トップへ戻る', algorithmCourse: 'アルゴリズム可視化' },
+    compareMode: {
+      enable:     '比較モード',
+      disable:    '比較モードを終了',
+      leftPanel:  '左パネル',
+      rightPanel: '右パネル',
+    },
     algorithms: {
       bubble: {
         name: 'バブルソート',
@@ -715,6 +849,153 @@ const ja: Translations = {
         useCases: '線形分離可能な二値分類の基礎。多層化するとディープラーニングの出発点になる。',
         visualGuide: '重み（エッジの太さ）が更新されるアニメーションに注目。誤差が0になると学習完了。',
       },
+      bogo: {
+        name: 'ボゴソート',
+        description: '配列をランダムにシャッフルしてソート済みか確認する。運が良ければ一発で成功するが、最悪の場合は無限ループする「最悪のソート」。',
+        best: 'O(n)', average: 'O((n+1)!)', worst: '∞', space: 'O(1)',
+        useCases: '教育目的のみ。「無計画なアルゴリズムがいかに非効率か」を体感するための例。',
+        visualGuide: 'シャッフルのたびに配列が変化する様子に注目。ソート済みになる瞬間を観察。',
+      },
+      shell: {
+        name: 'シェルソート',
+        description: '挿入ソートを「大きなギャップ」から始めて段階的にギャップを縮小する。Knuth 列を使うと実用的な速度が出る。',
+        best: 'O(n log n)', average: 'O(n^(4/3))', worst: 'O(n²)', space: 'O(1)',
+        useCases: '挿入ソートの改良版として組み込みシステム・メモリ制約環境で使われる。',
+        visualGuide: 'ギャップが大きいうちは遠く離れた要素が入れ替わる様子を観察。徐々に細かくなる。',
+      },
+      radix: {
+        name: 'ラディックスソート',
+        description: '数値を下位桁から上位桁へ順にカウンティングソートする。比較を使わないため O(dn) を実現する（d = 桁数）。',
+        best: 'O(dn)', average: 'O(dn)', worst: 'O(dn)', space: 'O(n+k)',
+        useCases: '大量の整数・文字列の高速ソート。電話帳のソート、基数変換処理など。',
+        visualGuide: '1の位→10の位→…と桁ごとにソートが進む様子に注目。各パスで配列が少しずつ整列する。',
+      },
+      cocktail: {
+        name: 'カクテルソート',
+        description: 'バブルソートを左→右と右→左で交互に行う双方向バブルソート。「亀問題」（小さな値が右端に来る遅さ）を緩和する。',
+        best: 'O(n)', average: 'O(n²)', worst: 'O(n²)', space: 'O(1)',
+        useCases: 'バブルソートの改良版。ほぼソート済みのデータで少し速くなる場合がある。',
+        visualGuide: '往復する比較の向きに注目。左端と右端から同時に緑（確定済み）が増えていく。',
+      },
+      dijkstra: {
+        name: 'ダイクストラ法',
+        description: '非負重み付きグラフで始点から全ノードへの最短距離を求める。未確定ノードの中で最小距離のものを順に確定する。',
+        best: 'O(V²)', average: 'O(E log V)', worst: 'O(V²)', space: 'O(V)',
+        useCases: 'カーナビ・ネットワークルーティング・ゲームのパス探索。',
+        visualGuide: 'ノード上の数値が暫定距離。緑＝確定済み。数値が更新（減少）される瞬間が「緩和」。',
+      },
+      bellmanFord: {
+        name: 'ベルマン・フォード法',
+        description: '全辺を V-1 回繰り返し緩和する。ダイクストラより遅いが負の重みも扱える。負のサイクル検出も可能。',
+        best: 'O(E)', average: 'O(VE)', worst: 'O(VE)', space: 'O(V)',
+        useCases: '負の重みがある経路問題。通貨アービトラージ検出。ネットワーク遅延の最悪ケース解析。',
+        visualGuide: '全辺を何度も緩和する反復の様子を観察。ダイクストラとのアプローチの違いに注目。',
+      },
+      kruskal: {
+        name: 'クラスカル法',
+        description: '辺を重みの昇順にソートし、サイクルを形成しない辺を貪欲に選んで最小全域木（MST）を構築する。Union-Find でサイクル判定。',
+        best: 'O(E log E)', average: 'O(E log E)', worst: 'O(E log E)', space: 'O(V)',
+        useCases: '電力網・通信網の最小コスト設計。クラスタリングの前処理（MST を切断）。',
+        visualGuide: '辺が軽い順に採用（緑）・棄却（赤）される様子に注目。棄却されるのはサイクルができるとき。',
+      },
+      prim: {
+        name: 'プリム法',
+        description: '始点から始め、MST に隣接する最小重みの辺を貪欲に選んでツリーを成長させる最小全域木アルゴリズム。',
+        best: 'O(E log V)', average: 'O(E log V)', worst: 'O(V²)', space: 'O(V)',
+        useCases: 'クラスカル法と同じ用途。密グラフでは優先度キュー実装でクラスカルより速い場合がある。',
+        visualGuide: '緑のツリーが一つのノードから成長していく様子に注目。クラスカルとの成長の違いを比較。',
+      },
+      rsa: {
+        name: 'RSA暗号',
+        description: '大きな数の素因数分解が困難という性質を利用した公開鍵暗号。公開鍵(n,e)で暗号化、秘密鍵(n,d)で復号する。',
+        best: 'O(log²n)', average: 'O(log²n)', worst: 'O(log²n)', space: 'O(1)',
+        useCases: 'HTTPS/TLS・SSH認証・デジタル署名・電子メール暗号化。',
+        visualGuide: '鍵生成→暗号化→復号の3フェーズを順に追う。各ステップの数式と計算結果を確認。',
+      },
+      diffieHellman: {
+        name: 'ディフィー・ヘルマン鍵共有',
+        description: '盗聴者がいる通信路でも安全に共通秘密鍵を共有できる。g^ab mod p を共通鍵とすることで秘密鍵を交換せずに合意できる。',
+        best: 'O(log n)', average: 'O(log n)', worst: 'O(log n)', space: 'O(1)',
+        useCases: 'TLS/SSL鍵交換・SSH・VPN・暗号化メッセージングアプリ（Signal等）。',
+        visualGuide: 'AliceとBobが公開値を交換するだけで同じ秘密鍵に到達する流れを観察。',
+      },
+      kmp: {
+        name: 'KMP法（クヌース・モリス・プラット）',
+        description: 'パターンの「失敗関数テーブル」を事前計算し、不一致時に無駄なバックトラックを省く文字列検索アルゴリズム。最悪 O(n+m) を保証。',
+        best: 'O(n)', average: 'O(n+m)', worst: 'O(n+m)', space: 'O(m)',
+        useCases: 'テキストエディタの検索・バイオインフォマティクス（DNA配列検索）・ネットワークパケット検査。',
+        visualGuide: '失敗関数テーブルの値が不一致時のスキップ量を決める。ナイーブ法との比較でスキップの威力を確認。',
+      },
+      boyerMoore: {
+        name: 'ボイヤー・ムーア法',
+        description: 'パターンを右端から照合し、「悪い文字規則」で大きくスキップする。平均的に最速の文字列検索アルゴリズム（最良 O(n/m)）。',
+        best: 'O(n/m)', average: 'O(n)', worst: 'O(nm)', space: 'O(m+Σ)',
+        useCases: 'grep・テキストエディタ・ウイルス検知・大規模テキスト検索。',
+        visualGuide: '右端から照合し、不一致文字のパターン内位置でスキップ量が決まる様子を観察。',
+      },
+      knapsack: {
+        name: 'ナップサック問題（0-1DP）',
+        description: '重量制限内で価値の合計を最大化するアイテムを選ぶ組合せ最適化問題。DP テーブルで O(nW) に解く。',
+        best: 'O(nW)', average: 'O(nW)', worst: 'O(nW)', space: 'O(nW)',
+        useCases: '資源配分・投資ポートフォリオ・荷物の積載最適化・計算生物学。',
+        visualGuide: 'テーブルが左から右・上から下へ埋まる様子に注目。黄色が現在セル、シアンが参照元セル。',
+      },
+      levenshtein: {
+        name: 'レーベンシュタイン距離',
+        description: '2つの文字列間の最小編集距離（挿入・削除・置換の最小回数）を DP で求める。スペルチェックや diff の基礎。',
+        best: 'O(nm)', average: 'O(nm)', worst: 'O(nm)', space: 'O(nm)',
+        useCases: 'スペルチェッカー・git diff・DNA配列比較・翻訳メモリ・ファジー検索。',
+        visualGuide: 'DP テーブルが埋まるにつれて右下の値が編集距離に近づく。最終的に右下セルが答え。',
+      },
+      mazeGeneration: {
+        name: '迷路生成（再帰バックトラッキング）',
+        description: 'DFS で壁を「掘り進む」ことで完全迷路を生成する。すべてのセル間に一意のパスを持つ木構造になる。',
+        best: 'O(rc)', average: 'O(rc)', worst: 'O(rc)', space: 'O(rc)',
+        useCases: 'ゲームの迷路生成・パズル設計・回路基板設計・スパニングツリーの視覚化。',
+        visualGuide: '現在の掘削位置（オレンジ）が行き止まりに達するとバックトラックする様子を観察。',
+      },
+      svm: {
+        name: 'SVM（サポートベクターマシン）',
+        description: '最大マージン超平面でデータを分類する。サポートベクター（境界に最も近い点）だけが決定境界を決定する。',
+        best: 'O(n)', average: 'O(n²)', worst: 'O(n³)', space: 'O(n)',
+        useCases: '画像分類・テキスト分類・バイオインフォマティクス・金融詐欺検出。',
+        visualGuide: '決定境界（紫線）とマージン帯の幅に注目。黄色枠の点がサポートベクター。',
+      },
+      pca: {
+        name: 'PCA（主成分分析）',
+        description: '分散が最大になる方向（主成分）を求め、データを低次元に射影する次元削減アルゴリズム。固有値分解で実現する。',
+        best: 'O(nd²)', average: 'O(nd²)', worst: 'O(nd²)', space: 'O(d²)',
+        useCases: '次元削減・ノイズ除去・顔認識（Eigenface）・データ可視化・特徴抽出。',
+        visualGuide: '矢印が主成分の方向と大きさを示す。長い矢印（PC1）がデータの最大分散方向。',
+      },
+      decisionTree: {
+        name: '決定木',
+        description: 'ジニ不純度を最小化する分割を貪欲に繰り返し、木構造の分類器を構築する。人間に解釈しやすいモデル。',
+        best: 'O(n log n)', average: 'O(n² log n)', worst: 'O(n²)', space: 'O(n)',
+        useCases: '医療診断・信用スコアリング・顧客分類・特徴重要度の解釈・アンサンブル学習（Random Forest）の基礎。',
+        visualGuide: '各ノードの分割条件（x ≤ 閾値）と不純度の変化に注目。葉ノードが最終的な予測クラス。',
+      },
+      linkedList: {
+        name: '連結リスト',
+        description: '各ノードが「値」と「次ノードへのポインタ」を持つ線形データ構造。先頭挿入は O(1) だが末尾挿入・検索は O(n) の走査が必要。',
+        best: 'O(1)', average: 'O(n)', worst: 'O(n)', space: 'O(n)',
+        useCases: 'キュー・スタックの実装基盤。頻繁な挿入・削除が中間位置で起きる場合に配列より有利。',
+        visualGuide: '黄色が現在走査中のノード、シアンが挿入されたノード、緑が発見されたノード。HEAD ポインタから辿る流れを追う。',
+      },
+      bst: {
+        name: '二分探索木 (BST)',
+        description: '各ノードについて「左の子 < 自分 < 右の子」という性質を持つ木構造。挿入・検索ともに平均 O(log n)、最悪（退化した場合）O(n)。',
+        best: 'O(log n)', average: 'O(log n)', worst: 'O(n)', space: 'O(n)',
+        useCases: '辞書・集合・範囲検索。自己平衡BST（AVL木・赤黒木）の基礎。データベースのインデックス。',
+        visualGuide: '黄色が比較中のノード、青が走査済みパス、シアンが新規挿入、緑が発見。左右どちらに進むかの判断に注目。',
+      },
+      hashTable: {
+        name: 'ハッシュテーブル',
+        description: 'ハッシュ関数でキーをバケットに写像し、O(1) 平均で挿入・検索を実現するデータ構造。衝突はチェーン法（連結リスト）で解決する。',
+        best: 'O(1)', average: 'O(1)', worst: 'O(n)', space: 'O(n)',
+        useCases: '連想配列・キャッシュ・重複検出・データベースのハッシュインデックス。Python の dict / Java の HashMap の内部実装。',
+        visualGuide: 'ハッシュ値が計算されてバケットが選択される瞬間と、衝突時にチェーンを線形探索する様子に注目。',
+      },
     },
   },
   infra: {
@@ -727,6 +1008,7 @@ const ja: Translations = {
       text: 'テキスト処理',
       process: 'プロセス管理',
       shell: 'シェルスクリプト',
+      network: 'ネットワーク',
     },
     ui: {
       statusIdle:          '起動待機中',
@@ -742,6 +1024,7 @@ const ja: Translations = {
       hintsLabel:          'ヒント',
       answerLabel:         '解答例',
       commandsLabel:       'コマンド早見表',
+      processLabel:        'プロセス',
       showHintButton:      (revealed, total) => `ヒント ${revealed + 1} を見る (${revealed + 1}/${total})`,
       allHintsShown:       'すべてのヒントを表示しました',
       showAnswerButton:    '解答例を表示する',
@@ -749,6 +1032,11 @@ const ja: Translations = {
       answerWarning:       '本当に解答例を見ますか？まずヒントをすべて確認してみましょう。',
       clearBanner:         'ミッションクリア！お疲れ様でした 🎉',
       nextMissionButton:   '次のミッションへ',
+      validationLabel:     '判定条件',
+      validationCheckNow:  '今すぐ判定',
+      validationLastPassed: '条件を満たしています ✓',
+      validationLastFailed: '条件を満たしていません',
+      validationPollingNote: '5秒おきに自動チェック中',
       leaveWarningTitle:   'セッションを終了しますか？',
       leaveWarningMessage: 'WebContainerのファイルシステムはページを離れると失われます。作業内容を保存する場合は、ターミナルでファイルをダウンロードしてください。',
       leaveCancel:         'この画面に留まる',
@@ -810,6 +1098,8 @@ const en: Translations = {
     },
     includedScenarios: 'Included Scenarios',
     startCourse: 'Start Course',
+    downloadReport: 'Report',
+    downloadReportTooltip: 'Download your learning progress as a Markdown file',
   },
   nav: {
     dbCourse: 'Database Course',
@@ -843,6 +1133,10 @@ const en: Translations = {
     executing: 'Running...',
     run: 'Run',
     stop: 'Stop',
+    share: 'Share',
+    shareCopied: 'Link copied!',
+    shareTooltip: 'Share current code via URL',
+    codeTheme: 'Code Theme',
   },
   console: {
     consoleTab: 'Console',
@@ -859,6 +1153,11 @@ const en: Translations = {
     newFilePlaceholder: 'filename.ts',
     createFileAriaLabel: 'Create file',
     cancelAriaLabel: 'Cancel',
+    customScenarios: 'Custom',
+    importCustomScenario: '+ Import',
+    deleteCustomScenario: 'Delete custom scenario',
+    erDiagram: 'ER Diagram',
+    tableTree: 'Tables',
   },
   scenarioPanel: {
     ariaLabel: 'Scenario panel',
@@ -888,6 +1187,8 @@ const en: Translations = {
     diffAdded: (n) => `+${n}`,
     diffRemoved: (n) => `−${n}`,
     diffEqual: (n) => `(${n} equal)`,
+    clearCriteriaLabel: 'Clear Criteria',
+    clearCheckNotYet: 'Results shown after running',
   },
   unsavedModal: {
     title: 'Unsaved Changes',
@@ -976,14 +1277,70 @@ const en: Translations = {
     snapshotAdded:
       'Added the DB snapshot as seed.sql.\nPress Run to start with the restored database.',
     importError: (reason) => `Import error: ${reason}`,
+    customScenarioImported: (title) => `Custom scenario "${title}" loaded successfully.`,
+    customScenarioError: (reason) => `Custom scenario error: ${reason}`,
+    deleteCustomScenario: (title) => `Delete custom scenario "${title}"?`,
+  },
+  mobile: {
+    desktopRecommended: 'This page is best experienced on a desktop. Some features (terminal, panel resize) may not work correctly on mobile.',
+    dismissWarning: 'Dismiss warning',
+  },
+  tutorial: {
+    title: 'Welcome to Browser Lab',
+    skipButton: 'Skip',
+    prevButton: '← Prev',
+    nextButton: 'Next →',
+    doneButton: "Let's start",
+    steps: [
+      {
+        title: 'Infra Learning Course',
+        description: 'Operate a real Linux terminal in your browser and learn infrastructure basics.',
+        tips: [
+          'Type commands into the terminal to interact',
+          'Missions are auto-graded every 5 seconds',
+          'Hints and answers are revealed step by step',
+          'The network diagram panel gives visual context',
+        ],
+      },
+      {
+        title: 'Programming Course',
+        description: 'Learn coding in a browser-based Node.js / TypeScript environment powered by WebContainers.',
+        tips: [
+          'Ctrl+Enter to run your code',
+          'Output is auto-graded against expected results',
+          'Use the Diff tab to compare with the model answer',
+          'Import custom scenarios via JSON',
+        ],
+      },
+      {
+        title: 'Database Course',
+        description: 'Practice SQL hands-on with a PostgreSQL database running entirely in your browser via PGLite.',
+        tips: [
+          'Ctrl+Enter to execute SQL',
+          'ER Diagram tab visualizes your schema',
+          'SQL formatter keeps your queries tidy',
+          'Snapshot feature exports/restores DB state',
+        ],
+      },
+      {
+        title: 'Algorithm Visualizer',
+        description: 'Learn 37 algorithms by stepping through them visually with speed control.',
+        tips: [
+          'Play, pause, step-forward and step-back at your own pace',
+          'Enter a custom number array for sort algorithms',
+          'Grid algorithms let you place walls, start and goal freely',
+          'The right panel explains time/space complexity',
+        ],
+      },
+    ],
   },
   algorithm: {
     pageTitle: 'Algorithm Visualizer',
     pageSubtitle: 'See and feel how algorithms work',
     selectPrompt: 'Select an algorithm from the list on the left',
-    categories: { sort: 'Sorting', search: 'Searching', classic: 'Classics', ml: 'ML Basics' },
+    categories: { sort: 'Sorting', search: 'Searching', classic: 'Classics', ml: 'ML Basics', datastructures: 'Data Structures' },
     controls: {
-      play: 'Play', pause: 'Pause', step: 'Step', reset: 'Reset',
+      play: 'Play', pause: 'Pause', step: 'Step', stepBack: 'Step Back', reset: 'Reset',
       speed: 'Speed', speedLabels: ['Slowest', 'Slow', 'Normal', 'Fast', 'Fastest'],
       arraySize: 'Array Size', randomize: 'Randomize', targetValue: 'Search Target',
       numDisks: 'Number of Disks', nValue: 'n value', useMemo: 'Use Memoization',
@@ -994,6 +1351,8 @@ const en: Translations = {
       clickToToggleWall: 'Click to toggle wall', clearWalls: 'Clear Walls',
       kernelType: 'Kernel', dataType: 'Training Data',
       wallMode: 'Wall', startMode: 'Start', goalMode: 'Goal',
+      customArray: 'Custom Array', customArrayPlaceholder: 'e.g. 5,3,1,8,2',
+      customArrayApply: 'Apply', customArrayError: 'Enter 2–30 integers separated by commas',
     },
     stepLog: {
       title: 'Step Log',
@@ -1009,6 +1368,12 @@ const en: Translations = {
       visualGuide: 'What to Watch',
     },
     nav: { backToTop: 'Back to Top', algorithmCourse: 'Algorithm Visualizer' },
+    compareMode: {
+      enable:     'Compare Mode',
+      disable:    'Exit Compare Mode',
+      leftPanel:  'Left Panel',
+      rightPanel: 'Right Panel',
+    },
     algorithms: {
       bubble: {
         name: 'Bubble Sort',
@@ -1143,6 +1508,153 @@ const en: Translations = {
         useCases: 'Linearly separable binary classification. Basis of multi-layer neural networks.',
         visualGuide: 'Edge thickness shows weight magnitude. Watch weights update when output ≠ target.',
       },
+      bogo: {
+        name: 'Bogo Sort',
+        description: 'Randomly shuffles the array and checks if it is sorted. Repeats until lucky. The "worst sort" for teaching that unplanned algorithms can be astronomically slow.',
+        best: 'O(n)', average: 'O((n+1)!)', worst: '∞', space: 'O(1)',
+        useCases: 'Education only. Demonstrates why random trial-and-error is not a strategy.',
+        visualGuide: 'Watch the array scramble on each shuffle. Observe when it accidentally becomes sorted.',
+      },
+      shell: {
+        name: 'Shell Sort',
+        description: 'Starts with a large gap and shrinks it (Knuth sequence). By pre-sorting far-apart elements, insertion sort at gap=1 runs much faster than on random data.',
+        best: 'O(n log n)', average: 'O(n^(4/3))', worst: 'O(n²)', space: 'O(1)',
+        useCases: 'Embedded systems, memory-constrained environments. Faster than O(n²) sorts without extra memory.',
+        visualGuide: 'At large gaps, distant elements swap. Gap shrinks each pass. Watch it converge to sorted.',
+      },
+      radix: {
+        name: 'Radix Sort',
+        description: 'Sorts integers digit by digit from least significant to most significant using counting sort. No comparisons → O(dn) time (d = number of digits).',
+        best: 'O(dn)', average: 'O(dn)', worst: 'O(dn)', space: 'O(n+k)',
+        useCases: 'Sorting large sets of integers or fixed-length strings. Faster than O(n log n) for large n with bounded keys.',
+        visualGuide: 'Watch the array partially sort by each digit (units, tens, ...). One pass per digit place.',
+      },
+      cocktail: {
+        name: 'Cocktail Sort',
+        description: 'Bidirectional bubble sort: alternates left→right and right→left passes. Addresses the "turtle problem" where small values at the right end take long to bubble left.',
+        best: 'O(n)', average: 'O(n²)', worst: 'O(n²)', space: 'O(1)',
+        useCases: 'Slight improvement over bubble sort for nearly-sorted data with small values near the end.',
+        visualGuide: 'Watch green grow from both ends simultaneously as the sort converges from both sides.',
+      },
+      dijkstra: {
+        name: "Dijkstra's Algorithm",
+        description: 'Finds shortest paths from a source to all nodes in a non-negative weighted graph. Greedily confirms the closest unvisited node at each step.',
+        best: 'O(V²)', average: 'O(E log V)', worst: 'O(V²)', space: 'O(V)',
+        useCases: 'GPS navigation, network routing (OSPF), game AI pathfinding.',
+        visualGuide: 'Numbers on nodes = current best distance. Green = confirmed. Watch distances shrink as edges relax.',
+      },
+      bellmanFord: {
+        name: 'Bellman-Ford Algorithm',
+        description: 'Relaxes all edges V-1 times. Slower than Dijkstra but handles negative edge weights and can detect negative cycles.',
+        best: 'O(E)', average: 'O(VE)', worst: 'O(VE)', space: 'O(V)',
+        useCases: 'Routing with negative costs, currency arbitrage detection, worst-case network analysis.',
+        visualGuide: 'Watch all edges being relaxed repeatedly. Compare the relaxation pattern with Dijkstra\'s greedy approach.',
+      },
+      kruskal: {
+        name: "Kruskal's Algorithm (MST)",
+        description: 'Sorts edges by weight and greedily adds the cheapest edge that does not create a cycle. Uses Union-Find for O(α(V)) cycle detection.',
+        best: 'O(E log E)', average: 'O(E log E)', worst: 'O(E log E)', space: 'O(V)',
+        useCases: 'Minimum cost network design (power grids, pipelines). MST-based clustering.',
+        visualGuide: 'Edges are considered lightest-first. Green = added to MST. Red = rejected (would create cycle).',
+      },
+      prim: {
+        name: "Prim's Algorithm (MST)",
+        description: 'Grows the MST from a start node by always adding the cheapest edge connecting the tree to a new node.',
+        best: 'O(E log V)', average: 'O(E log V)', worst: 'O(V²)', space: 'O(V)',
+        useCases: 'Same as Kruskal. Faster on dense graphs with priority queue. Used in game terrain generation.',
+        visualGuide: 'Watch the green tree grow from the source, one edge at a time. Compare growth pattern with Kruskal.',
+      },
+      rsa: {
+        name: 'RSA Encryption',
+        description: 'Public-key cryptosystem based on the difficulty of factoring large numbers. Public key (n,e) encrypts; private key (n,d) decrypts.',
+        best: 'O(log²n)', average: 'O(log²n)', worst: 'O(log²n)', space: 'O(1)',
+        useCases: 'HTTPS/TLS, SSH authentication, digital signatures, email encryption (PGP).',
+        visualGuide: 'Follow three phases: key generation → encryption → decryption. Check each formula and result.',
+      },
+      diffieHellman: {
+        name: 'Diffie-Hellman Key Exchange',
+        description: 'Allows two parties to establish a shared secret over a public channel. Security relies on the difficulty of the discrete logarithm problem.',
+        best: 'O(log n)', average: 'O(log n)', worst: 'O(log n)', space: 'O(1)',
+        useCases: 'TLS/SSL key exchange, SSH, VPN, encrypted messaging apps (Signal, WhatsApp).',
+        visualGuide: 'Watch Alice and Bob exchange public values and independently compute the same secret K.',
+      },
+      kmp: {
+        name: 'KMP (Knuth-Morris-Pratt)',
+        description: 'Precomputes a failure function table from the pattern to avoid redundant backtracking. Guarantees O(n+m) in the worst case.',
+        best: 'O(n)', average: 'O(n+m)', worst: 'O(n+m)', space: 'O(m)',
+        useCases: 'Text editors, bioinformatics (DNA search), network packet inspection.',
+        visualGuide: 'The failure table value tells how far to shift on mismatch. Watch it skip comparisons naive search would repeat.',
+      },
+      boyerMoore: {
+        name: 'Boyer-Moore',
+        description: 'Matches from the right end of the pattern, skipping by the "bad character rule." Typically sub-linear in practice (best O(n/m)).',
+        best: 'O(n/m)', average: 'O(n)', worst: 'O(nm)', space: 'O(m+Σ)',
+        useCases: 'grep, text editors, virus scanners, large-scale text search.',
+        visualGuide: 'Watch large skips when the mismatched character does not appear in the pattern at all.',
+      },
+      knapsack: {
+        name: '0-1 Knapsack (DP)',
+        description: 'Select items to maximize value within a weight limit. DP table dp[i][w] = max value using first i items with capacity w.',
+        best: 'O(nW)', average: 'O(nW)', worst: 'O(nW)', space: 'O(nW)',
+        useCases: 'Resource allocation, investment portfolio optimization, cargo loading, computational biology.',
+        visualGuide: 'Table fills left→right, top→bottom. Yellow = current cell. Cyan = cells referenced for the recurrence.',
+      },
+      levenshtein: {
+        name: 'Levenshtein Distance',
+        description: 'Minimum edit distance between two strings (insertions, deletions, substitutions). Classic DP problem used in spell checkers and diff tools.',
+        best: 'O(nm)', average: 'O(nm)', worst: 'O(nm)', space: 'O(nm)',
+        useCases: 'Spell checkers, git diff, DNA sequence alignment, fuzzy search, translation memory.',
+        visualGuide: 'As the table fills, the bottom-right value converges to the edit distance. Watch the reconstruction path.',
+      },
+      mazeGeneration: {
+        name: 'Maze Generation (Recursive Backtracking)',
+        description: 'Initializes all cells as walls, then DFS "carves" passages. Result is a perfect maze — a spanning tree where every pair of cells has exactly one path.',
+        best: 'O(rc)', average: 'O(rc)', worst: 'O(rc)', space: 'O(rc)',
+        useCases: 'Game level generation, puzzle design, circuit board routing, spanning tree visualization.',
+        visualGuide: 'Orange = current position carving through walls. Watch it backtrack when reaching a dead end.',
+      },
+      svm: {
+        name: 'SVM (Support Vector Machine)',
+        description: 'Finds the maximum-margin hyperplane separating two classes. Only the support vectors (points closest to the boundary) determine the decision boundary.',
+        best: 'O(n)', average: 'O(n²)', worst: 'O(n³)', space: 'O(n)',
+        useCases: 'Image classification, text categorization, bioinformatics, financial fraud detection.',
+        visualGuide: 'Purple line = decision boundary. Yellow-outlined points are support vectors. Watch the margin widen during training.',
+      },
+      pca: {
+        name: 'PCA (Principal Component Analysis)',
+        description: 'Finds the directions of maximum variance (principal components) via eigenvalue decomposition. Projects data onto these axes for dimensionality reduction.',
+        best: 'O(nd²)', average: 'O(nd²)', worst: 'O(nd²)', space: 'O(d²)',
+        useCases: 'Dimensionality reduction, noise removal, face recognition (Eigenfaces), data visualization, feature extraction.',
+        visualGuide: 'Arrows = principal component directions. Longer arrow (PC1) captures the most variance in the data.',
+      },
+      decisionTree: {
+        name: 'Decision Tree',
+        description: 'Greedily splits data by the feature and threshold that minimizes Gini impurity, building an interpretable tree classifier.',
+        best: 'O(n log n)', average: 'O(n² log n)', worst: 'O(n²)', space: 'O(n)',
+        useCases: 'Medical diagnosis, credit scoring, customer segmentation, feature importance, Random Forest base learner.',
+        visualGuide: 'Each node shows its split condition and Gini impurity. Leaf nodes show the predicted class.',
+      },
+      linkedList: {
+        name: 'Linked List',
+        description: 'A linear data structure where each node holds a value and a pointer to the next node. Front insertion is O(1); back insertion and search require O(n) traversal.',
+        best: 'O(1)', average: 'O(n)', worst: 'O(n)', space: 'O(n)',
+        useCases: 'Underlying structure for queues and stacks. Preferred over arrays when frequent mid-list insertions/deletions are needed.',
+        visualGuide: 'Yellow = node currently being traversed. Cyan = newly inserted node. Green = found node. Follow the HEAD pointer chain.',
+      },
+      bst: {
+        name: 'Binary Search Tree (BST)',
+        description: 'A tree where every node satisfies: left subtree < node < right subtree. Average O(log n) for insert and search; degenerates to O(n) on a sorted input.',
+        best: 'O(log n)', average: 'O(log n)', worst: 'O(n)', space: 'O(n)',
+        useCases: 'Dictionaries, sets, range queries. Basis for self-balancing trees (AVL, Red-Black). Database index structures.',
+        visualGuide: 'Yellow = node being compared. Blue = visited path. Cyan = newly inserted. Green = found. Watch which branch is chosen at each comparison.',
+      },
+      hashTable: {
+        name: 'Hash Table (Chaining)',
+        description: 'Maps keys to buckets via a hash function for O(1) average insert and lookup. Collisions are resolved by chaining (linked list per bucket).',
+        best: 'O(1)', average: 'O(1)', worst: 'O(n)', space: 'O(n)',
+        useCases: 'Associative arrays, caches, duplicate detection, hash indexes in databases. Underlying structure of Python dict and Java HashMap.',
+        visualGuide: 'Watch the hash computation select a bucket, then observe linear traversal within the chain for collision resolution.',
+      },
     },
   },
   infra: {
@@ -1155,6 +1667,7 @@ const en: Translations = {
       text: 'Text Processing',
       process: 'Process Management',
       shell: 'Shell Scripting',
+      network: 'Network',
     },
     ui: {
       statusIdle:          'Waiting to Start',
@@ -1170,6 +1683,7 @@ const en: Translations = {
       hintsLabel:          'Hints',
       answerLabel:         'Solution',
       commandsLabel:       'Command Reference',
+      processLabel:        'Processes',
       showHintButton:      (revealed, total) => `Show Hint ${revealed + 1} (${revealed + 1}/${total})`,
       allHintsShown:       'All hints revealed',
       showAnswerButton:    'Show Solution',
@@ -1177,6 +1691,11 @@ const en: Translations = {
       answerWarning:       'Are you sure? Try all the hints first — they might be enough.',
       clearBanner:         'Mission Complete! Well done 🎉',
       nextMissionButton:   'Next Mission',
+      validationLabel:     'Validation Criteria',
+      validationCheckNow:  'Check Now',
+      validationLastPassed: 'Criteria met ✓',
+      validationLastFailed: 'Criteria not met',
+      validationPollingNote: 'Auto-checking every 5s',
       leaveWarningTitle:   'Leave this session?',
       leaveWarningMessage: 'The WebContainer filesystem will be lost when you leave. Download any files you want to keep before leaving.',
       leaveCancel:         'Stay here',

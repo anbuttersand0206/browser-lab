@@ -182,50 +182,63 @@ export function useInfraContainer(isEnabled: boolean) {
 
   /**
    * ミッション選択時にファイルシステムをクリーンな状態にリセットして初期化する。
+   *
+   * wc.fs API はコンテナ内プロセス（jsh・node）と異なるファイルシステムビューを
+   * 持つ場合があるため、ファイル操作はすべて Node.js プロセスをスポーンして行う。
+   * これにより jsh と同じ名前空間でファイルが作成され、ls や cat で即座に確認できる。
    */
   const setupMission = useCallback(async (mission: InfraMission) => {
     const wc = wcRef.current
     if (!wc) return
 
-    // 以前のミッションでの変更が残らないよう、/home/user 内をクリーンアップする。
-    // ディレクトリ自体を削除するとシェル（CWD）が不安定になる可能性があるため、中身だけ消す。
-    try {
-      const entries = await wc.fs.readdir('/home/user')
-      for (const entry of entries) {
-        // .bashrc は維持する
-        if (entry === '.bashrc') continue
-        await wc.fs.rm(`/home/user/${entry}`, { recursive: true })
-      }
-    } catch {
-      // ディレクトリがない場合は作成する
-      await wc.fs.mkdir('/home/user', { recursive: true })
+    // ─── /home/user 内をクリーンアップ ───────────────────────────────────
+    // .bashrc だけ残し、前のミッションの変更を一掃する
+    const cleanupProc = await wc.spawn('node', ['-e',
+      `const fs=require('fs');` +
+      `try{const es=fs.readdirSync('/home/user');` +
+      `for(const e of es){if(e==='.bashrc')continue;` +
+      `fs.rmSync('/home/user/'+e,{recursive:true,force:true});}}catch{}`
+    ])
+    await cleanupProc.exit
+
+    // .bashrc がなければ再生成する
+    const bashrcProc = await wc.spawn('node', ['-e',
+      `const fs=require('fs');` +
+      `if(!fs.existsSync('/home/user/.bashrc'))` +
+      `fs.writeFileSync('/home/user/.bashrc',${JSON.stringify(INITIAL_BASHRC)});`
+    ])
+    await bashrcProc.exit
+
+    // ─── セットアップディレクトリ・ファイルの作成 ─────────────────────────
+    // パスが絶対パスならそのまま使い、相対パスなら /home/user/ を付ける
+    const toAbs = (p: string) => p.startsWith('/') ? p : `/home/user/${p}`
+
+    const dirs = mission.setupDirs ?? []
+    const files = Object.entries(mission.setupFiles ?? {})
+
+    if (dirs.length > 0 || files.length > 0) {
+      const lines = [
+        `const fs=require('fs');`,
+        ...dirs.map(d =>
+          `fs.mkdirSync(${JSON.stringify(toAbs(d))},{recursive:true});`
+        ),
+        ...files.map(([p, content]) => {
+          const abs = toAbs(p)
+          const dir = abs.substring(0, abs.lastIndexOf('/'))
+          return (
+            `fs.mkdirSync(${JSON.stringify(dir)},{recursive:true});` +
+            `fs.writeFileSync(${JSON.stringify(abs)},${JSON.stringify(content)});`
+          )
+        }),
+      ]
+      const setupProc = await wc.spawn('node', ['-e', lines.join('')])
+      await setupProc.exit
     }
 
-    // .bashrc がない場合は再作成
-    try {
-      await wc.fs.readFile('/home/user/.bashrc')
-    } catch {
-      await wc.fs.writeFile('/home/user/.bashrc', INITIAL_BASHRC)
-    }
-
-    // ミッションで定義された初期ディレクトリの作成
-    for (const dir of mission.setupDirs ?? []) {
-      await wc.fs.mkdir(`/home/user/${dir}`, { recursive: true })
-    }
-
-    // ミッションで定義された初期ファイルの作成
-    for (const [filePath, content] of Object.entries(mission.setupFiles ?? {})) {
-      const fullPath = `/home/user/${filePath}`
-      const dir = fullPath.substring(0, fullPath.lastIndexOf('/'))
-      if (dir) await wc.fs.mkdir(dir, { recursive: true })
-      await wc.fs.writeFile(fullPath, content)
-    }
-
-    // シェルのカレントディレクトリをリセットし、画面をクリアする。
-    // これにより、新しいミッションの開始地点が明確になる。
+    // シェルのカレントディレクトリをリセットし、画面をクリアする
     await shellInputWriterRef.current?.write('cd /home/user && clear\n')
 
-    // 視覚的なファイルツリーを更新
+    // ファイルツリーを更新（node 経由で作成したファイルは wc.fs でも参照できる）
     const tree = await readDirRecursive(wc, '/home/user')
     setFileTree(tree)
   }, [])
@@ -238,86 +251,111 @@ export function useInfraContainer(isEnabled: boolean) {
     setFileTree(tree)
   }, [])
 
-  // バリデーションルールを評価してミッションクリア判定を行う
-  // @webcontainer/api v1 に stat がないため：
-  // - ファイル存在確認は readFile で代替
-  // - ディレクトリ確認は readdir で代替
-  // - パーミッション・シンボリックリンク確認は Node.js スポーンで代替
-  const validate = useCallback(async (rule: ValidationRule): Promise<boolean> => {
+  // バリデーションルールを評価してミッションクリア判定を行う。
+  // wc.fs API はホスト側のビューを返すため、jsh プロセスが作成したファイル・ディレクトリを
+  // 即座に反映しないことがある。Node.js プロセスをスポーンすることでコンテナ内の
+  // プロセス名前空間から直接確認し、この不一致を回避する。
+  const validate = useCallback(async (rules: ValidationRule[]): Promise<boolean[]> => {
     const wc = wcRef.current
-    if (!wc) return false
+    if (!wc) return rules.map(() => false)
 
-    switch (rule.type) {
-      case 'file_exists': {
-        try {
-          await wc.fs.readFile(rule.target)
-          return true
-        } catch {
-          return false
+    // Node.js の inline スクリプトを実行して stdout 文字列を返すヘルパー
+    const spawnNode = async (code: string): Promise<string> => {
+      const proc = await wc.spawn('node', ['-e', code])
+      let out = ''
+      proc.output.pipeTo(new WritableStream({ write(d) { out += d } }))
+      await proc.exit
+      return out.trim()
+    }
+
+    // 単一ルールを評価する内部ヘルパー（validate はこれを各ルールに適用する）
+    const validateOne = async (rule: ValidationRule): Promise<boolean> => {
+      switch (rule.type) {
+        case 'file_exists': {
+          try {
+            const code =
+              `try{require('fs').readFileSync(${JSON.stringify(rule.target)});` +
+              `process.stdout.write('1')}catch{process.stdout.write('0')}`
+            return await spawnNode(code) === '1'
+          } catch { return false }
+        }
+
+        case 'file_not_exists': {
+          try {
+            const code =
+              `try{require('fs').readFileSync(${JSON.stringify(rule.target)});` +
+              `process.stdout.write('0')}catch{process.stdout.write('1')}`
+            return await spawnNode(code) === '1'
+          } catch { return false }
+        }
+
+        case 'dir_exists': {
+          try {
+            // readdirSync が成功すればディレクトリが存在する（空でも例外を投げない）
+            const code =
+              `try{require('fs').readdirSync(${JSON.stringify(rule.target)});` +
+              `process.stdout.write('1')}catch{process.stdout.write('0')}`
+            return await spawnNode(code) === '1'
+          } catch { return false }
+        }
+
+        case 'file_content': {
+          try {
+            const code =
+              `try{const c=require('fs').readFileSync(${JSON.stringify(rule.target)},'utf-8');` +
+              `process.stdout.write(c.includes(${JSON.stringify(rule.expected)})?'1':'0')}` +
+              `catch{process.stdout.write('0')}`
+            return await spawnNode(code) === '1'
+          } catch { return false }
+        }
+
+        case 'permission': {
+          try {
+            const code =
+              `try{const s=require('fs').statSync(${JSON.stringify(rule.target)});` +
+              `process.stdout.write((s.mode&0o777).toString(8))}catch{process.stdout.write('err')}`
+            return await spawnNode(code) === rule.expected
+          } catch { return false }
+        }
+
+        case 'symlink_exists': {
+          try {
+            const code =
+              `try{const s=require('fs').lstatSync(${JSON.stringify(rule.target)});` +
+              `process.stdout.write(s.isSymbolicLink()?'1':'0')}catch{process.stdout.write('0')}`
+            return await spawnNode(code) === '1'
+          } catch { return false }
+        }
+
+        case 'command_output': {
+          try {
+            const proc = await wc.spawn('sh', ['-c', rule.cmd])
+            let out = ''
+            proc.output.pipeTo(new WritableStream({ write(d) { out += d } }))
+            await proc.exit
+            return out.includes(rule.expected)
+          } catch { return false }
         }
       }
+    }
 
-      case 'dir_exists': {
-        try {
-          await wc.fs.readdir(rule.target)
-          return true
-        } catch {
-          return false
-        }
-      }
+    // 全ルールを並列評価する（各ルールは独立した Node.js プロセスで実行される）
+    return Promise.all(rules.map(validateOne))
+  }, [])
 
-      case 'file_content': {
-        try {
-          const content = await wc.fs.readFile(rule.target, 'utf-8')
-          return content.includes(rule.expected)
-        } catch {
-          return false
-        }
-      }
-
-      case 'permission': {
-        // stat がないため Node.js の fs.statSync を経由してパーミッションを取得する
-        try {
-          const code =
-            `try{const s=require('fs').statSync('${rule.target}');` +
-            `process.stdout.write((s.mode&0o777).toString(8))}catch{process.stdout.write('err')}`
-          const proc = await wc.spawn('node', ['-e', code])
-          let out = ''
-          proc.output.pipeTo(new WritableStream({ write(d) { out += d } }))
-          await proc.exit
-          return out.trim() === rule.expected
-        } catch {
-          return false
-        }
-      }
-
-      case 'symlink_exists': {
-        // lstat でシンボリックリンク自体の情報を確認する
-        try {
-          const code =
-            `try{const s=require('fs').lstatSync('${rule.target}');` +
-            `process.stdout.write(s.isSymbolicLink()?'1':'0')}catch{process.stdout.write('0')}`
-          const proc = await wc.spawn('node', ['-e', code])
-          let out = ''
-          proc.output.pipeTo(new WritableStream({ write(d) { out += d } }))
-          await proc.exit
-          return out.trim() === '1'
-        } catch {
-          return false
-        }
-      }
-
-      case 'command_output': {
-        try {
-          const proc = await wc.spawn('sh', ['-c', rule.cmd])
-          let out = ''
-          proc.output.pipeTo(new WritableStream({ write(d) { out += d } }))
-          await proc.exit
-          return out.includes(rule.expected)
-        } catch {
-          return false
-        }
-      }
+  // 任意のシェルコマンドを実行して標準出力を文字列として返す。
+  // プロセスツリー取得などの読み取り専用操作に使う。
+  const runCommand = useCallback(async (cmd: string): Promise<string> => {
+    const wc = wcRef.current
+    if (!wc) return ''
+    try {
+      const proc = await wc.spawn('sh', ['-c', cmd])
+      let out = ''
+      proc.output.pipeTo(new WritableStream({ write(d) { out += d } }))
+      await proc.exit
+      return out
+    } catch {
+      return ''
     }
   }, [])
 
@@ -329,6 +367,7 @@ export function useInfraContainer(isEnabled: boolean) {
     setupMission,
     refreshFileTree,
     validate,
+    runCommand,
   }
 }
 

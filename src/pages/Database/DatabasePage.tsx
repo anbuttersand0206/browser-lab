@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Database, Sun, Moon, ArrowLeft, Play, ChevronRight, HelpCircle, CheckCircle2, AlignLeft, Languages } from 'lucide-react'
+import { Database, Sun, Moon, ArrowLeft, Play, ChevronRight, HelpCircle, CheckCircle2, AlignLeft, Languages, Link2, Check } from 'lucide-react'
 import { usePGLite, type QueryResult } from '../../hooks/usePGLite'
 import { useUnsavedGuard } from '../../hooks/useUnsavedGuard'
 import { useJsonIO } from '../../hooks/useJsonIO'
@@ -21,7 +21,13 @@ import { useCompletedScenarios } from '../../hooks/useCompletedScenarios'
 import { databaseScenarios, type DatabaseScenario } from '../../scenarios/database'
 import { validateDatabaseExport, extractDatabaseSnapshot } from '../../lib/importValidator'
 import { formatSql } from '../../lib/sqlFormatter'
-import { judgeDbOutput } from '../../lib/clearJudge'
+import { judgeDbDetail, dbClearItems, type ClearItem } from '../../lib/clearJudge'
+import { encodeShare, decodeShare, readShareFromHash } from '../../lib/shareUrl'
+import { saveToIndexedDb, loadFromIndexedDb } from '../../lib/progressStorage'
+import { CODE_THEMES, type CodeThemeId } from '../../lib/editorThemes'
+import { useCodeTheme } from '../../hooks/useCodeTheme'
+import { MobileWarning } from '../../components/MobileWarning/MobileWarning'
+import { ErDiagram } from '../../components/DBClient/ErDiagram/ErDiagram'
 
 // リサイズ可能な3ペインのサイズをまとめて管理する
 interface PaneSizes {
@@ -146,9 +152,15 @@ export default function DatabasePage() {
     savedProgress.scenarioContents
   )
 
-  // アクティブシナリオの SQL（保存済み内容があれば復元、なければ initialSQL）
+  // アクティブシナリオの SQL（共有URL → LocalStorage → initialSQL の優先順で決定する）
   const initialSql = savedProgress.scenarioContents[initialScenario.id] ?? initialScenario.initialSQL
-  const [sql, setSql] = useState<string>(initialSql)
+  const [sql, setSql] = useState<string>(() => {
+    const shareEncoded = readShareFromHash()
+    if (shareEncoded) {
+      try { return decodeShare(shareEncoded) } catch { /* 不正な share パラメータは無視する */ }
+    }
+    return initialSql
+  })
   // savedSql はエクスポート後の状態を保持し、isDirty の基準となる
   const [savedSql, setSavedSql] = useState<string>(initialSql)
 
@@ -156,6 +168,14 @@ export default function DatabasePage() {
   // queryHistory は JSON エクスポート用に実行済みクエリを蓄積する
   const [queryHistory, setQueryHistory] = useState<QueryResult[]>([])
   const [isExecuting, setIsExecuting] = useState(false)
+  // サイドバーの表示モード: テーブルツリー or ER図
+  type SidebarTab = 'tables' | 'er'
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('tables')
+  // 共有リンクのコピー完了フィードバック用。2 秒後に自動でリセットする。
+  const [shareCopied, setShareCopied] = useState(false)
+  const { codeThemeId, setCodeThemeId } = useCodeTheme()
+  // 'system' の場合は extension を渡さず resolvedTheme に委ねる
+  const codeThemeExtension = CODE_THEMES.find((th) => th.id === codeThemeId)?.extension ?? null
 
   const isDirty = sql !== savedSql
 
@@ -173,15 +193,29 @@ export default function DatabasePage() {
     setScenarioContents((prev) => ({ ...prev, [scenario.id]: newSql }))
   }, [scenario.id])
 
-  // 初回マウント時にURLへシナリオIDを付与する。
-  // ページを直接開いた場合（/#/database のみ）に対し、現在のシナリオIDを追加して
-  // ブックマークやシェアで直接リンクできるようにする。
+  // 初回マウント時にURLへシナリオIDを付与し、share パラメータをクリアする。
+  // - シナリオIDがない場合: /#/database/... に遷移（share も同時にクリアされる）
+  // - share パラメータがある場合: 内容は読み込み済みのため URL から除去する
   useEffect(() => {
+    const hasShare = readShareFromHash() !== null
     if (!urlScenarioId) {
       navigate(`/database/${initialScenario.id}`, { replace: true })
+    } else if (hasShare) {
+      navigate(`/database/${urlScenarioId}`, { replace: true })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // 初回マウント時のみ実行
+
+  // 現在の SQL を URL にエンコードしてクリップボードにコピーする。
+  // コピー完了を 2 秒間ボタンで通知し、自動でリセットする。
+  const handleShare = useCallback(() => {
+    const encoded = encodeShare(sql)
+    const shareUrl = `${window.location.origin}${window.location.pathname}#/database/${scenario.id}?share=${encoded}`
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2000)
+    })
+  }, [sql, scenario.id])
 
   const handleExport = useCallback(async () => {
     // 現在のPGLite DBの状態をSQLダンプとして同梱する。
@@ -250,8 +284,9 @@ export default function DatabasePage() {
       setSql(nextSql)
       setSavedSql(nextSql)
       setLatestResult([])
-      // シナリオが変わったら前のクリア通知を隠す
+      // シナリオが変わったら採点状態をリセットする
       setShowClearNotification(false)
+      setClearItems(nextScenario.clearCriteria ? dbClearItems(nextScenario.clearCriteria) : [])
       // URLを更新してシナリオへの直接リンクを可能にする
       navigate(`/database/${nextScenario.id}`)
     }, `シナリオ「${nextScenario.title}」に移動`)
@@ -259,6 +294,11 @@ export default function DatabasePage() {
 
   // クリア通知の表示フラグ（採点合格時に true になり、タイマーで自動的に消える）
   const [showClearNotification, setShowClearNotification] = useState(false)
+
+  // クリア条件チェックリスト。採点前は ok: null、採点後は ok: true/false。
+  const [clearItems, setClearItems] = useState<ClearItem[]>(() =>
+    scenario.clearCriteria ? dbClearItems(scenario.clearCriteria) : []
+  )
 
   // 採点トリガー用カウンター。実行が完了するたびにインクリメントされる。
   // executeSql の useCallback deps に markCompleted/isCompleted を含めずに済む設計:
@@ -357,8 +397,28 @@ export default function DatabasePage() {
       scenarioContents: debouncedScenarioContents,
       updatedAt: new Date().toISOString(),
     }
+    // localStorage に同期書き込みし、次回の初回レンダリングを高速化する。
+    // IndexedDB にも非同期で書くことで、localStorage がクリアされても復元できる。
     localStorage.setItem(LS_KEY, JSON.stringify(progress))
+    void saveToIndexedDb(LS_KEY, progress)
   }, [debouncedScenarioId, debouncedScenarioContents])
+
+  // localStorage が空の場合（ブラウザによる自動クリア等）に
+  // IndexedDB から進捗を復元する。マウント時に一度だけ実行する。
+  useEffect(() => {
+    if (Object.keys(savedProgress.scenarioContents).length > 0) return
+    loadFromIndexedDb<DbProgressV2>(LS_KEY).then((progress) => {
+      if (!isDbProgressV2(progress)) return
+      const restoredScenario =
+        databaseScenarios.find((s) => s.id === progress.scenarioId) ?? databaseScenarios[0]
+      setScenario(restoredScenario)
+      setScenarioContents(progress.scenarioContents)
+      const restoredSql = progress.scenarioContents[restoredScenario.id] ?? restoredScenario.initialSQL
+      setSql(restoredSql)
+      // 次回以降の高速読み込みのために localStorage にも書き戻す
+      localStorage.setItem(LS_KEY, JSON.stringify(progress))
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Ctrl+S / Cmd+S でエクスポートできるようにする。
   // ブラウザ標準の「ページを保存」ダイアログを preventDefault で抑制している。
@@ -402,8 +462,9 @@ export default function DatabasePage() {
   useEffect(() => {
     // 初回マウント時（execCount === 0）と clearCriteria が未定義のシナリオはスキップ
     if (execCount === 0 || !scenario.clearCriteria) return
-    const passed = judgeDbOutput(lastResultsRef.current, scenario.clearCriteria)
-    if (passed && !isCompleted('database', scenario.id)) {
+    const result = judgeDbDetail(lastResultsRef.current, scenario.clearCriteria)
+    setClearItems(result.checks.map((c) => ({ label: c.label, ok: c.ok })))
+    if (result.passed && !isCompleted('database', scenario.id)) {
       markCompleted('database', scenario.id)
       setShowClearNotification(true)
     }
@@ -440,6 +501,8 @@ export default function DatabasePage() {
 
   return (
     <div className="flex h-full flex-col bg-dark-bg dark:bg-dark-bg light:bg-light-bg">
+      {/* モバイル端末向け警告バナー（sm 以上は CSS で非表示） */}
+      <MobileWarning />
       <div className="flex h-9 flex-shrink-0 items-center gap-2 border-b border-dark-border bg-dark-tab px-3 dark:border-dark-border dark:bg-dark-tab light:border-light-border light:bg-light-tab">
         <button
           onClick={() => guardNavigate(() => navigate('/'), 'トップページに戻る')}
@@ -516,14 +579,55 @@ export default function DatabasePage() {
             ))}
           </div>
 
+          {/* テーブルツリー / ER図 タブ切り替え */}
+          <div
+            role="tablist"
+            aria-label={t.sidebar.tableTree}
+            className="flex border-b border-dark-border dark:border-dark-border light:border-light-border"
+          >
+            {(['tables', 'er'] as const).map((tab) => (
+              <button
+                key={tab}
+                role="tab"
+                id={`db-sidebar-tab-${tab}`}
+                aria-selected={sidebarTab === tab}
+                aria-controls={`db-sidebar-panel-${tab}`}
+                onClick={() => setSidebarTab(tab)}
+                className={`flex-1 py-1.5 text-xs transition-colors ${
+                  sidebarTab === tab
+                    ? 'border-b-2 border-blue-500 text-dark-text dark:text-dark-text light:text-light-text'
+                    : 'text-dark-textDim hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text'
+                }`}
+              >
+                {tab === 'tables' ? t.sidebar.tableTree : t.sidebar.erDiagram}
+              </button>
+            ))}
+          </div>
+
           <div className="flex-1 overflow-auto">
-            <TableTree
-              tables={tables}
-              onTableClick={handleTableClick}
-              onShowSchema={() => setIsSchemaViewOpen(true)}
-            />
-            {/* 実行済みクエリを履歴として表示し、クリックでエディタに再読み込みできる */}
-            <QueryHistory queries={queryHistory} onSelect={updateSql} />
+            <div
+              role="tabpanel"
+              id="db-sidebar-panel-tables"
+              aria-labelledby="db-sidebar-tab-tables"
+              hidden={sidebarTab !== 'tables'}
+            >
+              <TableTree
+                tables={tables}
+                onTableClick={handleTableClick}
+                onShowSchema={() => setIsSchemaViewOpen(true)}
+              />
+              {/* 実行済みクエリを履歴として表示し、クリックでエディタに再読み込みできる */}
+              <QueryHistory queries={queryHistory} onSelect={updateSql} />
+            </div>
+            <div
+              role="tabpanel"
+              id="db-sidebar-panel-er"
+              aria-labelledby="db-sidebar-tab-er"
+              hidden={sidebarTab !== 'er'}
+              className="h-full"
+            >
+              <ErDiagram tables={tables} />
+            </div>
           </div>
         </div>
 
@@ -571,6 +675,35 @@ export default function DatabasePage() {
                     </>
                   )}
                 </button>
+                <button
+                  onClick={handleShare}
+                  title={t.toolbar.shareTooltip}
+                  aria-label={t.toolbar.share}
+                  className={`flex items-center gap-1 rounded px-2.5 py-1 text-xs transition-colors ${
+                    shareCopied
+                      ? 'text-green-400'
+                      : 'text-dark-textDim hover:bg-dark-hover hover:text-dark-text dark:text-dark-textDim dark:hover:bg-dark-hover dark:hover:text-dark-text light:text-light-textDim light:hover:bg-light-hover light:hover:text-light-text'
+                  }`}
+                >
+                  {shareCopied ? (
+                    <><Check size={12} />{t.toolbar.shareCopied}</>
+                  ) : (
+                    <><Link2 size={12} />{t.toolbar.share}</>
+                  )}
+                </button>
+                <select
+                  value={codeThemeId}
+                  onChange={(e) => setCodeThemeId(e.target.value as CodeThemeId)}
+                  title={t.toolbar.codeTheme}
+                  aria-label={t.toolbar.codeTheme}
+                  className="rounded border border-dark-border bg-dark-tab px-1.5 py-0.5 text-xs text-dark-textDim focus:outline-none dark:border-dark-border dark:bg-dark-tab dark:text-dark-textDim light:border-light-border light:bg-light-tab light:text-light-textDim"
+                >
+                  {CODE_THEMES.map((th) => (
+                    <option key={th.id} value={th.id}>
+                      {locale === 'ja' ? th.labelJa : th.labelEn}
+                    </option>
+                  ))}
+                </select>
               </div>
             }
           />
@@ -595,6 +728,7 @@ export default function DatabasePage() {
                 language="sql"
                 onCtrlEnter={executeSql}
                 sqlTables={tables.map((tbl) => ({ name: tbl.name, columns: tbl.columns.map((c) => c.name) }))}
+                themeExtension={codeThemeExtension}
               />
             )}
           </div>
@@ -627,6 +761,7 @@ export default function DatabasePage() {
             solution={scenario.solution}
             currentContent={sql}
             onSolutionViewed={() => markCompleted('database', scenario.id)}
+            clearItems={clearItems}
           />
         </div>
       </div>

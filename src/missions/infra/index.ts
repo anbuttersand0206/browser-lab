@@ -3,6 +3,7 @@ import { permissionsMissions } from './permissions'
 import { textMissions } from './text'
 import { processMissions } from './process'
 import { shellMissions } from './shell'
+import { networkMissions } from './network'
 import type { InfraCategory, InfraMission } from './types'
 
 export type { InfraCategory, InfraMission, MissionLocale, ValidationRule } from './types'
@@ -15,6 +16,7 @@ export const infraMissions: InfraMission[] = [
   ...textMissions,
   ...processMissions,
   ...shellMissions,
+  ...networkMissions,
 ]
 
 // カテゴリ名のリスト（サイドバーのセクション順を制御する）
@@ -24,6 +26,7 @@ export const INFRA_CATEGORIES: InfraCategory[] = [
   'text',
   'process',
   'shell',
+  'network',
 ]
 
 export function getMissionsByCategory(category: InfraCategory): InfraMission[] {

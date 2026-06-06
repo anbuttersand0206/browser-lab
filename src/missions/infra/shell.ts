@@ -58,7 +58,7 @@ export const shellMissions: InfraMission[] = [
       },
     },
     setupDirs: ['/home/user'],
-    validation: { type: 'file_exists', target: '/home/user/path.txt' },
+    validation: [{ type: 'file_exists', target: '/home/user/path.txt' }],
   },
 
   {
@@ -129,7 +129,7 @@ export const shellMissions: InfraMission[] = [
     setupFiles: {
       '/home/user/data.txt': 'some content\n',
     },
-    validation: { type: 'file_exists', target: '/home/user/result.txt' },
+    validation: [{ type: 'file_exists', target: '/home/user/result.txt' }],
   },
 
   {
@@ -187,7 +187,11 @@ export const shellMissions: InfraMission[] = [
       },
     },
     setupDirs: ['/home/user'],
-    validation: { type: 'file_content', target: '/home/user/numbers.txt', expected: '1' },
+    // 1〜5 が揃って書かれていることを確認（1だけでなく5も含むかチェック）
+    validation: [
+      { type: 'file_content', target: '/home/user/numbers.txt', expected: '1' },
+      { type: 'file_content', target: '/home/user/numbers.txt', expected: '5' },
+    ],
   },
 
   {
@@ -256,6 +260,156 @@ export const shellMissions: InfraMission[] = [
       '/home/user/files/config.txt':  'key=value\n',
       '/home/user/files/notes.txt':   'Meeting notes\n',
     },
-    validation: { type: 'file_exists', target: '/home/user/rename.sh' },
+    // スクリプト作成 + 実際にリネームが実行されたことを確認
+    validation: [
+      { type: 'file_exists',     target: '/home/user/rename.sh' },
+      { type: 'file_exists',     target: '/home/user/files/report.bak' },
+      { type: 'file_not_exists', target: '/home/user/files/report.txt' },
+    ],
+  },
+
+  {
+    id: 'shell-5',
+    category: 'shell',
+    locale: {
+      ja: {
+        title: '引数を受け取るスクリプト',
+        description:
+          'hello.sh というスクリプトを作成してください。\n\n' +
+          '動作: 第1引数として受け取った名前を使い、\n"Hello, NAME!" と表示する。\n\n' +
+          '作成後、sh hello.sh Alice で動作確認してください。',
+        background:
+          'シェルスクリプトは $1, $2 ... で位置引数を参照します。\n' +
+          '同じスクリプトをさまざまな入力で再利用でき、\n' +
+          '引数の数を $# で、全引数を $@ でまとめて参照できます。\n\n' +
+          '主な特殊変数:\n' +
+          '· $0   スクリプトファイル名\n' +
+          '· $1〜$9  位置引数（スクリプトへの入力）\n' +
+          '· $@   全引数をスペース区切りで展開\n' +
+          '· $#   引数の個数\n' +
+          '· $?   直前コマンドの終了コード（0=成功）',
+        hints: [
+          'echo "Hello, $1!" が引数展開の基本構文です。',
+          'printf \'#!/bin/sh\\necho "Hello, $1!"\\n\' > hello.sh でスクリプトファイルを作成できます。',
+          'chmod +x は不要です。sh hello.sh Alice のように sh コマンドで直接実行できます。',
+        ],
+        answer:
+          'printf \'#!/bin/sh\\necho "Hello, $1!"\\n\' > hello.sh\n' +
+          'sh hello.sh Alice',
+        commands: [
+          { cmd: '$1, $2, ...',     desc: '位置引数（スクリプトへの入力値）' },
+          { cmd: '$@',              desc: '全引数をまとめて参照する' },
+          { cmd: '$#',              desc: '引数の個数を取得する' },
+          { cmd: '$0',              desc: 'スクリプト自身のファイル名' },
+          { cmd: '$?',              desc: '直前コマンドの終了コード（0=成功）' },
+        ],
+      },
+      en: {
+        title: 'Scripts with Arguments',
+        description:
+          'Create a script named hello.sh that:\n\n' +
+          'Takes a name as the first argument ($1) and prints\n"Hello, NAME!"\n\n' +
+          'After creating it, test with: sh hello.sh Alice',
+        background:
+          'Shell scripts accept arguments via positional parameters $1, $2, etc.\n' +
+          'This lets you reuse the same script with different inputs.\n\n' +
+          'Special variables:\n' +
+          '· $0  script name itself\n' +
+          '· $1–$9 positional arguments\n' +
+          '· $@  all arguments (space-separated)\n' +
+          '· $#  argument count\n' +
+          '· $?  exit code of the last command (0 = success)',
+        hints: [
+          'echo "Hello, $1!" expands the first argument into the string.',
+          'printf \'#!/bin/sh\\necho "Hello, $1!"\\n\' > hello.sh creates the script file.',
+          'No chmod needed — run with: sh hello.sh Alice',
+        ],
+        answer:
+          'printf \'#!/bin/sh\\necho "Hello, $1!"\\n\' > hello.sh\n' +
+          'sh hello.sh Alice',
+        commands: [
+          { cmd: '$1, $2, ...', desc: 'Positional parameters (inputs to the script)' },
+          { cmd: '$@',          desc: 'All arguments at once' },
+          { cmd: '$#',          desc: 'Number of arguments' },
+          { cmd: '$0',          desc: 'Script filename itself' },
+          { cmd: '$?',          desc: 'Exit code of the last command' },
+        ],
+      },
+    },
+    setupDirs: ['/home/user'],
+    // hello.sh に "Alice" を渡して実行し、出力に "Hello" が含まれることで動作を確認する
+    validation: [{ type: 'command_output', cmd: 'sh /home/user/hello.sh Alice', expected: 'Hello' }],
+  },
+
+  {
+    id: 'shell-6',
+    category: 'shell',
+    locale: {
+      ja: {
+        title: '数値計算スクリプト',
+        description:
+          'sum.sh というスクリプトを作成してください。\n\n' +
+          '動作: 2つの整数を引数として受け取り、その合計を表示する。\n\n' +
+          '例: sh sum.sh 7 3 → 10 と表示されること。',
+        background:
+          'シェルスクリプトで整数演算を行うには $(( )) 構文（算術展開）を使います。\n' +
+          'expr コマンドより高速で、シンプルに書けます。\n\n' +
+          '算術展開の例:\n' +
+          '· echo $(( 3 + 5 ))     → 8\n' +
+          '· echo $(( $1 + $2 ))  → 引数の合計\n' +
+          '· $(( $1 * $2 ))       → 掛け算\n' +
+          '· $(( $1 / $2 ))       → 整数除算（切り捨て）\n' +
+          '· $(( $1 % $2 ))       → 余り',
+        hints: [
+          '$(( $1 + $2 )) が整数加算の基本構文です。',
+          'echo $(( $1 + $2 )) でそのまま合計を出力できます。',
+          'printf \'#!/bin/sh\\necho $(( $1 + $2 ))\\n\' > sum.sh でスクリプトを作成します。',
+        ],
+        answer:
+          'printf \'#!/bin/sh\\necho $(( $1 + $2 ))\\n\' > sum.sh\n' +
+          'sh sum.sh 7 3',
+        commands: [
+          { cmd: '$(( expr ))',       desc: '整数演算（算術展開）' },
+          { cmd: '$(( $1 + $2 ))',    desc: '引数の合計を計算する' },
+          { cmd: '$(( $1 * $2 ))',    desc: '引数の積を計算する' },
+          { cmd: '$(( $1 % $2 ))',    desc: '余りを計算する' },
+          { cmd: 'bc <<< "1.5+2.5"', desc: '小数計算（bc コマンド）' },
+        ],
+      },
+      en: {
+        title: 'Numeric Calculation Script',
+        description:
+          'Create a script named sum.sh that:\n\n' +
+          'Takes two integers as arguments and prints their sum.\n\n' +
+          'Example: sh sum.sh 7 3 should print 10',
+        background:
+          'Use $(( )) (arithmetic expansion) for integer arithmetic in shell scripts.\n' +
+          'It\'s faster than the expr command and easier to read.\n\n' +
+          'Examples:\n' +
+          '· echo $(( 3 + 5 ))    → 8\n' +
+          '· echo $(( $1 + $2 )) → sum of arguments\n' +
+          '· $(( $1 * $2 ))      → multiplication\n' +
+          '· $(( $1 / $2 ))      → integer division (truncated)\n' +
+          '· $(( $1 % $2 ))      → remainder',
+        hints: [
+          '$(( $1 + $2 )) is the arithmetic expansion syntax for addition.',
+          'echo $(( $1 + $2 )) prints the sum directly.',
+          'printf \'#!/bin/sh\\necho $(( $1 + $2 ))\\n\' > sum.sh creates the script.',
+        ],
+        answer:
+          'printf \'#!/bin/sh\\necho $(( $1 + $2 ))\\n\' > sum.sh\n' +
+          'sh sum.sh 7 3',
+        commands: [
+          { cmd: '$(( expr ))',       desc: 'Integer arithmetic (arithmetic expansion)' },
+          { cmd: '$(( $1 + $2 ))',    desc: 'Sum of two arguments' },
+          { cmd: '$(( $1 * $2 ))',    desc: 'Product of two arguments' },
+          { cmd: '$(( $1 % $2 ))',    desc: 'Remainder (modulo)' },
+          { cmd: 'bc <<< "1.5+2.5"', desc: 'Decimal arithmetic with bc' },
+        ],
+      },
+    },
+    setupDirs: ['/home/user'],
+    // sum.sh に 7 と 3 を渡して実行し、出力に "10" が含まれることで算術機能を確認する
+    validation: [{ type: 'command_output', cmd: 'sh /home/user/sum.sh 7 3', expected: '10' }],
   },
 ]

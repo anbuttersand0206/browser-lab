@@ -66,8 +66,11 @@ const users = [
   { id: 4, name: "Yuki", age: 15 },
 ];
 
-// TODO: 各ユーザーの自己紹介を出力してください
-// TODO: 成人ユーザーのみをフィルタリングして出力してください
+console.log("=== 全ユーザーの自己紹介 ===");
+// TODO: 各ユーザーの自己紹介を出力してください（例: users.forEach(...)）
+
+console.log("\\n=== 成人ユーザーのみ ===");
+// TODO: 成人ユーザーのみをフィルタリングして出力してください（例: filterAdults(users).forEach(...)）
 `,
     'package.json': JSON.stringify({
       name: 'ts-basics',
@@ -1602,6 +1605,269 @@ shapes.forEach((s) => {
   },
 }
 
+const scenario9: ProgrammingScenario = {
+  id: 'react-vite-ui',
+  title: 'React でタスク管理アプリを作る',
+  description: `## React でタスク管理アプリを作る
+
+Vite + React でシンプルなタスク管理アプリを作り、
+下部の **プレビュータブ** でリアルタイムに確認しましょう。
+
+### 課題
+
+1. \`useState\` でタスクリストと入力テキストを管理する
+2. テキスト入力でタスクを追加する（Enter キーでも追加できるように）
+3. チェックボックスで各タスクの完了状態を切り替える
+4. 「完了を削除」ボタンで完了済みタスクをまとめて削除する
+5. 未完了 / 全体の件数をフッターに表示する
+
+### ポイント
+
+- \`useState\` の配列更新は必ずイミュータブルに（\`push\` ではなく spread \`[...prev, item]\`）
+- 各タスクには一意の \`id\` が必要（重複すると React の \`key\` が衝突する）
+- \`id\` の生成には \`Date.now()\` が使える
+- 編集するのは \`src/App.tsx\` のみ。\`index.ts\` はサーバー起動用なので変更不要
+`,
+  files: {
+    'index.ts': `// Vite の Node.js API でインライン設定のまま dev サーバーを起動する。
+// useWebContainer は npx tsx index.ts を実行するため、
+// vite.config.ts を別ファイルにする代わりにここで設定を渡している。
+import { createServer } from 'vite'
+import react from '@vitejs/plugin-react'
+
+const server = await createServer({
+  plugins: [react()],
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+    // WebContainers 環境では外部ホストからアクセスが来るため全ホストを許可する
+    allowedHosts: true,
+  },
+})
+
+await server.listen()
+console.log('Vite dev server が起動しました。プレビュータブで確認できます。')
+`,
+    'index.html': `<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>タスク管理アプリ</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+`,
+    'src/main.tsx': `import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+)
+`,
+    'src/App.tsx': `import { useState } from 'react'
+
+interface Task {
+  id: number
+  text: string
+  completed: boolean
+}
+
+// ---- インラインスタイル定数 ----
+const S = {
+  page: { maxWidth: 480, margin: '40px auto', fontFamily: 'sans-serif', padding: '0 16px', color: '#d4d4d4' } as const,
+  heading: { color: '#4ec9b0', marginBottom: 24 } as const,
+  inputRow: { display: 'flex', gap: 8, marginBottom: 24 } as const,
+  input: { flex: 1, padding: '8px 12px', borderRadius: 4, border: '1px solid #444', background: '#1e1e1e', color: '#d4d4d4', fontSize: 14 } as const,
+  addBtn: { padding: '8px 16px', borderRadius: 4, background: '#4ec9b0', border: 'none', color: '#1e1e1e', fontWeight: 'bold', cursor: 'pointer' } as const,
+  taskItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #333' } as const,
+  footer: { marginTop: 16, display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#888' } as const,
+  clearBtn: { padding: '4px 10px', borderRadius: 4, background: 'transparent', border: '1px solid #555', color: '#888', cursor: 'pointer' } as const,
+}
+
+export default function App() {
+  // TODO: useState でタスクリストと入力テキストを管理してください
+  // const [tasks, setTasks] = useState<Task[]>([])
+  // const [inputText, setInputText] = useState('')
+
+  // TODO: タスクを追加する関数を実装してください
+  // - 空テキストは追加しない（ガード節）
+  // - id は Date.now() で一意にする
+  // - 追加後に inputText を空文字にリセットする
+  function handleAdd() {
+    // ...
+  }
+
+  // TODO: Enter キーで追加できるようにしてください
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter') handleAdd()
+  }
+
+  // TODO: タスクの完了状態を切り替える関数を実装してください
+  // 対象 id のタスクだけ completed を反転させる（イミュータブルに更新）
+  function handleToggle(id: number) {
+    // ...
+  }
+
+  // TODO: 完了済みタスクをすべて削除する関数を実装してください
+  function handleClearCompleted() {
+    // ...
+  }
+
+  // TODO: 完了件数と全件数を計算してください
+  const completedCount = 0
+  const totalCount = 0
+
+  return (
+    <div style={S.page}>
+      <h1 style={S.heading}>📝 タスク管理</h1>
+
+      {/* 入力フォーム */}
+      <div style={S.inputRow}>
+        {/* TODO: value を inputText にバインドし onChange で setInputText を呼んでください */}
+        <input
+          style={S.input}
+          placeholder="タスクを入力してください..."
+          onKeyDown={handleKeyDown}
+        />
+        {/* TODO: onClick で handleAdd を呼んでください */}
+        <button style={S.addBtn}>追加</button>
+      </div>
+
+      {/* タスクリスト */}
+      {/* TODO: tasks を map してリスト表示してください */}
+      {/*   - key には task.id を使う                     */}
+      {/*   - チェックボックスで handleToggle を呼ぶ       */}
+      {/*   - 完了済みは打ち消し線スタイルを付ける         */}
+
+      {/* フッター */}
+      <div style={S.footer}>
+        <span>残り {totalCount - completedCount} 件 / 全 {totalCount} 件</span>
+        <button style={S.clearBtn} onClick={handleClearCompleted}>
+          完了を削除 ({completedCount})
+        </button>
+      </div>
+    </div>
+  )
+}
+`,
+    'package.json': JSON.stringify({
+      name: 'react-task-manager',
+      version: '1.0.0',
+      type: 'module',
+      dependencies: {
+        tsx: '^4.0.0',
+        typescript: '^5.0.0',
+        react: '^18.3.0',
+        'react-dom': '^18.3.0',
+        vite: '^5.0.0',
+        '@vitejs/plugin-react': '^4.0.0',
+        '@types/react': '^18.3.0',
+        '@types/react-dom': '^18.3.0',
+      },
+    }, null, 2),
+  },
+  hints: [
+    '`const [tasks, setTasks] = useState<Task[]>([])` でタスク配列を管理します',
+    'タスク追加: `setTasks(prev => [...prev, { id: Date.now(), text: inputText.trim(), completed: false }])` イミュータブルに追加します',
+    'トグル: `setTasks(prev => prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t))` 対象 id のみ反転します',
+    '完了削除: `setTasks(prev => prev.filter(t => !t.completed))` で完了済みを取り除きます',
+    '`tasks.filter(t => t.completed).length` で完了件数、`tasks.length` で全件数を取得できます',
+  ],
+  // UI シナリオはプレビューで確認するため、コンソール出力による自動採点は行わない
+  clearCriteria: undefined,
+  solution: {
+    'src/App.tsx': `import { useState } from 'react'
+
+interface Task {
+  id: number
+  text: string
+  completed: boolean
+}
+
+const S = {
+  page: { maxWidth: 480, margin: '40px auto', fontFamily: 'sans-serif', padding: '0 16px', color: '#d4d4d4' } as const,
+  heading: { color: '#4ec9b0', marginBottom: 24 } as const,
+  inputRow: { display: 'flex', gap: 8, marginBottom: 24 } as const,
+  input: { flex: 1, padding: '8px 12px', borderRadius: 4, border: '1px solid #444', background: '#1e1e1e', color: '#d4d4d4', fontSize: 14 } as const,
+  addBtn: { padding: '8px 16px', borderRadius: 4, background: '#4ec9b0', border: 'none', color: '#1e1e1e', fontWeight: 'bold', cursor: 'pointer' } as const,
+  taskItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #333' } as const,
+  footer: { marginTop: 16, display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#888' } as const,
+  clearBtn: { padding: '4px 10px', borderRadius: 4, background: 'transparent', border: '1px solid #555', color: '#888', cursor: 'pointer' } as const,
+}
+
+export default function App() {
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [inputText, setInputText] = useState('')
+
+  function handleAdd() {
+    // 空テキストは追加しない
+    if (!inputText.trim()) return
+    setTasks(prev => [...prev, { id: Date.now(), text: inputText.trim(), completed: false }])
+    setInputText('')
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter') handleAdd()
+  }
+
+  function handleToggle(id: number) {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t))
+  }
+
+  function handleClearCompleted() {
+    setTasks(prev => prev.filter(t => !t.completed))
+  }
+
+  const completedCount = tasks.filter(t => t.completed).length
+  const totalCount = tasks.length
+
+  return (
+    <div style={S.page}>
+      <h1 style={S.heading}>📝 タスク管理</h1>
+
+      <div style={S.inputRow}>
+        <input
+          style={S.input}
+          value={inputText}
+          onChange={e => setInputText(e.target.value)}
+          placeholder="タスクを入力してください..."
+          onKeyDown={handleKeyDown}
+        />
+        <button style={S.addBtn} onClick={handleAdd}>追加</button>
+      </div>
+
+      {tasks.map(task => (
+        <div key={task.id} style={S.taskItem}>
+          <input
+            type="checkbox"
+            checked={task.completed}
+            onChange={() => handleToggle(task.id)}
+          />
+          <span style={{ textDecoration: task.completed ? 'line-through' : 'none', color: task.completed ? '#666' : '#d4d4d4' }}>
+            {task.text}
+          </span>
+        </div>
+      ))}
+
+      <div style={S.footer}>
+        <span>残り {totalCount - completedCount} 件 / 全 {totalCount} 件</span>
+        <button style={S.clearBtn} onClick={handleClearCompleted}>
+          完了を削除 ({completedCount})
+        </button>
+      </div>
+    </div>
+  )
+}
+`,
+  },
+}
+
 export const programmingScenarios: ProgrammingScenario[] = [
   scenario1,
   scenario2,
@@ -1611,4 +1877,5 @@ export const programmingScenarios: ProgrammingScenario[] = [
   scenario6,
   scenario7,
   scenario8,
+  scenario9,
 ]

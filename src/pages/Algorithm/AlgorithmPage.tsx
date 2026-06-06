@@ -20,6 +20,18 @@ import { ConvolutionVisualizer } from '../../components/AlgorithmViewer/visualiz
 import { PoolingVisualizer } from '../../components/AlgorithmViewer/visualizers/PoolingVisualizer'
 import { KMeansVisualizer } from '../../components/AlgorithmViewer/visualizers/KMeansVisualizer'
 import { PerceptronVisualizer } from '../../components/AlgorithmViewer/visualizers/PerceptronVisualizer'
+import { GraphVisualizer } from '../../components/AlgorithmViewer/visualizers/GraphVisualizer'
+import { CryptoVisualizer } from '../../components/AlgorithmViewer/visualizers/CryptoVisualizer'
+import { StringSearchVisualizer } from '../../components/AlgorithmViewer/visualizers/StringSearchVisualizer'
+import { DPTableVisualizer } from '../../components/AlgorithmViewer/visualizers/DPTableVisualizer'
+import { MazeVisualizer } from '../../components/AlgorithmViewer/visualizers/MazeVisualizer'
+import { ScatterVisualizer } from '../../components/AlgorithmViewer/visualizers/ScatterVisualizer'
+import { DecisionTreeVisualizer } from '../../components/AlgorithmViewer/visualizers/DecisionTreeVisualizer'
+import { LinkedListVisualizer } from '../../components/AlgorithmViewer/visualizers/LinkedListVisualizer'
+import { BSTVisualizer } from '../../components/AlgorithmViewer/visualizers/BSTVisualizer'
+import { HashTableVisualizer } from '../../components/AlgorithmViewer/visualizers/HashTableVisualizer'
+import { MobileWarning } from '../../components/MobileWarning/MobileWarning'
+import { AlgorithmRunnerPanel } from '../../components/AlgorithmViewer/AlgorithmRunnerPanel'
 
 // 速度レベル 1〜5 に対応する遅延時間（ミリ秒）。
 // 最低速 1200ms は「手動でステップを目で追える」基準、
@@ -115,6 +127,11 @@ export default function AlgorithmPage() {
     setIsPlaying(prev => !prev)
   }
 
+  const handleStepBack = () => {
+    setIsPlaying(false)
+    setCurrentStep(prev => Math.max(prev - 1, 0))
+  }
+
   const handleStep = () => {
     setIsPlaying(false)
     setCurrentStep(prev => Math.min(prev + 1, steps.length - 1))
@@ -191,14 +208,19 @@ export default function AlgorithmPage() {
   const visualizerType = meta.visualizerType
 
   const [collapsed, setCollapsed] = useState<Record<AlgorithmCategory, boolean>>({
-    sort: false, search: false, classic: false, ml: false,
+    sort: false, search: false, classic: false, ml: false, datastructures: false,
   })
 
   const toggleTheme = () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
   const toggleLocale = () => setLocale(locale === 'ja' ? 'en' : 'ja')
 
+  // 比較モード: 2つのアルゴリズムを同時に表示して挙動を並べて比較する
+  const [compareMode, setCompareMode] = useState(false)
+
   return (
     <div className="flex h-full flex-col bg-dark-bg dark:bg-dark-bg light:bg-light-bg">
+      {/* モバイル端末向け警告バナー（sm 以上は CSS で非表示） */}
+      <MobileWarning />
       {/* ヘッダー */}
       <div className="flex h-10 flex-shrink-0 items-center gap-3 border-b border-dark-border bg-dark-sidebar px-3 dark:border-dark-border dark:bg-dark-sidebar light:border-light-border light:bg-light-sidebar">
         <button
@@ -214,6 +236,17 @@ export default function AlgorithmPage() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          {/* 比較モードトグルボタン */}
+          <button
+            onClick={() => setCompareMode((v) => !v)}
+            className={`flex items-center gap-1 rounded border px-2 py-0.5 text-xs transition-colors ${
+              compareMode
+                ? 'border-purple-500/60 bg-purple-500/20 text-purple-400'
+                : 'border-dark-border text-dark-textDim hover:text-dark-text dark:border-dark-border dark:text-dark-textDim dark:hover:text-dark-text light:border-light-border light:text-light-textDim light:hover:text-light-text'
+            }`}
+          >
+            {compareMode ? alg.compareMode.disable : alg.compareMode.enable}
+          </button>
           <button
             onClick={toggleLocale}
             className="flex items-center gap-1 rounded border border-dark-border px-2 py-0.5 text-xs text-dark-textDim hover:text-dark-text dark:border-dark-border dark:text-dark-textDim dark:hover:text-dark-text light:border-light-border light:text-light-textDim light:hover:text-light-text"
@@ -232,8 +265,22 @@ export default function AlgorithmPage() {
         </div>
       </div>
 
-      {/* 3ペインレイアウト */}
-      <div className="flex flex-1 overflow-hidden">
+      {/* 比較モード: 左右2パネルを並べて表示する。サイドバーと情報パネルは非表示にして空間を確保する。 */}
+      {compareMode && (
+        <div className="flex flex-1 gap-3 overflow-hidden p-3">
+          <div className="flex-1 overflow-hidden">
+            <div className="mb-1 text-center text-xs font-medium text-blue-400">{alg.compareMode.leftPanel}</div>
+            <AlgorithmRunnerPanel accentColor="blue" />
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <div className="mb-1 text-center text-xs font-medium text-purple-400">{alg.compareMode.rightPanel}</div>
+            <AlgorithmRunnerPanel accentColor="purple" />
+          </div>
+        </div>
+      )}
+
+      {/* 通常モードの 3ペインレイアウト */}
+      <div className={`flex flex-1 overflow-hidden ${compareMode ? 'hidden' : ''}`}>
 
         {/* 左サイドバー: アルゴリズムリスト */}
         <div
@@ -296,7 +343,9 @@ export default function AlgorithmPage() {
               onConfigChange={newCfg => setConfig(newCfg)}
               isPlaying={isPlaying}
               canStep={currentStep < steps.length - 1}
+              canStepBack={currentStep > 0}
               onPlay={handlePlay}
+              onStepBack={handleStepBack}
               onStep={handleStep}
               onReset={handleReset}
               speedLevel={speedLevel}
@@ -409,8 +458,20 @@ function VisualizerSwitch({
     case 'convolution':return <ConvolutionVisualizer state={state} />
     case 'pooling':    return <PoolingVisualizer state={state} />
     case 'kmeans':     return <KMeansVisualizer state={state} />
-    case 'perceptron': return <PerceptronVisualizer state={state} />
-    default:           return null
+    case 'perceptron':    return <PerceptronVisualizer state={state} />
+    case 'graphShortest': return <GraphVisualizer state={state} mode="shortest" />
+    case 'graphMST':      return <GraphVisualizer state={state} mode="mst" />
+    case 'crypto':        return <CryptoVisualizer state={state} />
+    case 'stringSearch':  return <StringSearchVisualizer state={state} />
+    case 'dpTable':       return <DPTableVisualizer state={state} />
+    case 'maze':          return <MazeVisualizer state={state} />
+    case 'scatter':
+      return <ScatterVisualizer state={state} mode={algorithmId === 'svm' ? 'svm' : 'pca'} />
+    case 'decisionTree':  return <DecisionTreeVisualizer state={state} />
+    case 'linkedList':    return <LinkedListVisualizer state={state} />
+    case 'bst':           return <BSTVisualizer state={state} />
+    case 'hashTable':     return <HashTableVisualizer state={state} />
+    default:              return null
   }
 }
 

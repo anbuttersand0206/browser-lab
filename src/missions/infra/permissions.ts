@@ -56,7 +56,7 @@ export const permissionsMissions: InfraMission[] = [
       '/home/user/config.conf':  'password=secret\n',
       '/home/user/run.sh':       '#!/bin/sh\necho "running"\n',
     },
-    validation: { type: 'file_exists', target: '/home/user/learned.txt' },
+    validation: [{ type: 'file_exists', target: '/home/user/learned.txt' }],
   },
 
   {
@@ -111,8 +111,7 @@ export const permissionsMissions: InfraMission[] = [
     setupFiles: {
       '/home/user/secret.txt': 'DATABASE_PASSWORD=s3cr3t\nAPI_KEY=abc123\n',
     },
-    // mode 600 になっているかをチェック
-    validation: { type: 'permission', target: '/home/user/secret.txt', expected: '600' },
+    validation: [{ type: 'permission', target: '/home/user/secret.txt', expected: '600' }],
   },
 
   {
@@ -167,18 +166,23 @@ export const permissionsMissions: InfraMission[] = [
       },
     },
     setupFiles: {
-      // 初期パーミッション 644（chmod はシェルで実行するためsetupFilesのみでは設定できない）
-      // シェル起動後にchmod 644 deploy.shを実行して初期化する
       '/home/user/deploy.sh': '#!/bin/sh\necho "Deploying..."\n',
     },
-    // g+x 後のパーミッションは元が 644 → 654 → 実際はrw-r-xr-- = 654
-    // ただしjshのデフォルト umask によって変わるため、ここでは g+x が適用されたかを
-    // command_output で stat の出力を確認する方式にする
-    validation: {
-      type: 'command_output',
-      cmd: 'stat -c "%a" /home/user/deploy.sh 2>/dev/null || node -e "const m=require(\'fs\').statSync(\'/home/user/deploy.sh\').mode;process.stdout.write(((m&0o777).toString(8)))"',
-      expected: '5',  // 最後の桁が5（r-x）、または中の桁に実行ビットが立っていることを確認
-    },
+    // g+x: グループの実行ビット(bit3)が立っているか
+    // o-w: その他の書き込みビット(bit1)が立っていないか
+    // ビット直接検査で umask 差異に影響されない
+    validation: [
+      {
+        type: 'command_output',
+        cmd: 'node -e "const m=require(\'fs\').statSync(\'/home/user/deploy.sh\').mode;process.stdout.write((m>>3&1)?\'ok\':\'fail\')"',
+        expected: 'ok',
+      },
+      {
+        type: 'command_output',
+        cmd: 'node -e "const m=require(\'fs\').statSync(\'/home/user/deploy.sh\').mode;process.stdout.write(!(m>>1&1)?\'ok\':\'fail\')"',
+        expected: 'ok',
+      },
+    ],
   },
 
   {
@@ -234,6 +238,14 @@ export const permissionsMissions: InfraMission[] = [
       },
     },
     setupDirs: ['/home/user'],
-    validation: { type: 'file_exists', target: '/home/user/hello.sh' },
+    // ファイル存在 + 実行ビット（0o111: owner/group/others いずれかに x があればよい）
+    validation: [
+      { type: 'file_exists', target: '/home/user/hello.sh' },
+      {
+        type: 'command_output',
+        cmd: 'node -e "const m=require(\'fs\').statSync(\'/home/user/hello.sh\').mode;process.stdout.write((m&0o111)?\'ok\':\'fail\')"',
+        expected: 'ok',
+      },
+    ],
   },
 ]

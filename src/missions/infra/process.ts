@@ -53,7 +53,7 @@ export const processMissions: InfraMission[] = [
       },
     },
     setupDirs: ['/home/user'],
-    validation: { type: 'file_exists', target: '/home/user/processes.txt' },
+    validation: [{ type: 'file_exists', target: '/home/user/processes.txt' }],
   },
 
   {
@@ -111,7 +111,7 @@ export const processMissions: InfraMission[] = [
       },
     },
     setupDirs: ['/home/user'],
-    validation: { type: 'file_exists', target: '/home/user/jobs_output.txt' },
+    validation: [{ type: 'file_exists', target: '/home/user/jobs_output.txt' }],
   },
 
   {
@@ -170,7 +170,7 @@ export const processMissions: InfraMission[] = [
       },
     },
     setupDirs: ['/home/user'],
-    validation: { type: 'file_exists', target: '/home/user/killed.txt' },
+    validation: [{ type: 'file_exists', target: '/home/user/killed.txt' }],
   },
 
   {
@@ -228,6 +228,6 @@ export const processMissions: InfraMission[] = [
       },
     },
     setupDirs: ['/home/user'],
-    validation: { type: 'file_content', target: '/home/user/crontab.txt', expected: '0 2 * * *' },
+    validation: [{ type: 'file_content', target: '/home/user/crontab.txt', expected: '0 2 * * *' }],
   },
 ]

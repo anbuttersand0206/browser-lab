@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Zap, Sun, Moon, ArrowLeft, ChevronRight, HelpCircle, Plus, Check, X, CheckCircle2, Languages } from 'lucide-react'
+import { Zap, Sun, Moon, ArrowLeft, ChevronRight, HelpCircle, Plus, Check, X, CheckCircle2, Languages, Link2 } from 'lucide-react'
 import { useWebContainer, type ContainerStatus } from '../../hooks/useWebContainer'
 import { useUnsavedGuard } from '../../hooks/useUnsavedGuard'
 import { useJsonIO } from '../../hooks/useJsonIO'
@@ -18,7 +18,13 @@ import { programmingScenarios, type ProgrammingScenario } from '../../scenarios/
 import { validateProgrammingExport, extractDatabaseSnapshot } from '../../lib/importValidator'
 import { getPackageCompletions } from '../../lib/tsCompletions'
 import { useCompletedScenarios } from '../../hooks/useCompletedScenarios'
-import { judgeProgOutput } from '../../lib/clearJudge'
+import { judgeProgDetail, progClearItems, type ClearItem } from '../../lib/clearJudge'
+import { encodeShare, decodeShare, readShareFromHash } from '../../lib/shareUrl'
+import { saveToIndexedDb, loadFromIndexedDb } from '../../lib/progressStorage'
+import { CODE_THEMES, type CodeThemeId } from '../../lib/editorThemes'
+import { useCodeTheme } from '../../hooks/useCodeTheme'
+import { validateCustomScenarioJson, loadCustomScenarios, saveCustomScenarios } from '../../lib/customScenarios'
+import { MobileWarning } from '../../components/MobileWarning/MobileWarning'
 
 // リサイズ可能な3ペインのサイズをまとめて管理する
 interface PaneSizes {
@@ -178,14 +184,35 @@ export default function ProgrammingPage() {
     savedProgress.scenarioContents
   )
 
-  // アクティブシナリオのファイル群（保存済みがあれば復元、なければ initialFiles）
+  // アクティブシナリオのファイル群（共有URL → LocalStorage → initialFiles の優先順で決定する）
   const initialFiles = savedProgress.scenarioContents[initialScenario.id] ?? initialScenario.files
-  const [files, setFiles] = useState<Record<string, string>>(initialFiles)
+  const [files, setFiles] = useState<Record<string, string>>(() => {
+    const shareEncoded = readShareFromHash()
+    if (shareEncoded) {
+      try {
+        // share パラメータはアクティブファイル（index.ts）の内容のみを含む
+        const decoded = decodeShare(shareEncoded)
+        const entryFile = 'index.ts' in initialFiles ? 'index.ts' : Object.keys(initialFiles)[0]
+        return { ...initialFiles, [entryFile]: decoded }
+      } catch { /* 不正な share パラメータは無視する */ }
+    }
+    return initialFiles
+  })
   const [activeFile, setActiveFile] = useState('index.ts')
   // savedFiles はエクスポート後の状態を保持し、isDirty の基準となる
   const [savedFiles, setSavedFiles] = useState<Record<string, string>>(initialFiles)
 
   const isDirty = JSON.stringify(files) !== JSON.stringify(savedFiles)
+  // 共有リンクのコピー完了フィードバック用。2 秒後に自動でリセットする。
+  const [shareCopied, setShareCopied] = useState(false)
+  const { codeThemeId, setCodeThemeId } = useCodeTheme()
+  const codeThemeExtension = CODE_THEMES.find((th) => th.id === codeThemeId)?.extension ?? null
+
+  // カスタムシナリオは localStorage に保存し、ページリロード後も維持する。
+  // 組み込みシナリオとは id の "custom:" プレフィックスで区別する。
+  const [customScenarios, setCustomScenarios] = useState<ProgrammingScenario[]>(
+    () => loadCustomScenarios()
+  )
 
   const [paneSizes, setPaneSizes] = useState<PaneSizes>({
     sidebarWidthPx: 200,
@@ -200,14 +227,53 @@ export default function ProgrammingPage() {
     setScenarioContents((prev) => ({ ...prev, [scenario.id]: newFiles }))
   }, [scenario.id])
 
-  // 初回マウント時にURLへシナリオIDを付与する。
-  // ページを直接開いた場合（/#/programming のみ）に対し、現在のシナリオIDを追加する。
+  // 初回マウント時にURLへシナリオIDを付与し、share パラメータをクリアする。
+  // - シナリオIDがない場合: /#/programming/... に遷移（share も同時にクリアされる）
+  // - share パラメータがある場合: 内容は読み込み済みのため URL から除去する
   useEffect(() => {
+    const hasShare = readShareFromHash() !== null
     if (!urlScenarioId) {
       navigate(`/programming/${initialScenario.id}`, { replace: true })
+    } else if (hasShare) {
+      navigate(`/programming/${urlScenarioId}`, { replace: true })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // 初回マウント時のみ実行
+
+  // アクティブファイルの内容を URL にエンコードしてクリップボードにコピーする。
+  // 共有される内容はアクティブファイル1ファイルのみ（index.ts 等）。
+  const handleShare = useCallback(() => {
+    const content = files[activeFile] ?? ''
+    const encoded = encodeShare(content)
+    const shareUrl = `${window.location.origin}${window.location.pathname}#/programming/${scenario.id}?share=${encoded}`
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2000)
+    })
+  }, [files, activeFile, scenario.id])
+
+  // カスタムシナリオ JSON ファイルをファイルピッカーで読み込む。
+  // validateCustomScenarioJson で型・形式を検証してから追加する。
+  const handleImportCustomScenario = useCallback(async () => {
+    try {
+      const raw = await importJson()
+      const result = validateCustomScenarioJson(raw)
+      if (!result.ok) {
+        alert(t.confirm.customScenarioError(result.reason))
+        return
+      }
+      const newScenario = result.data
+      // 同じ id のシナリオが既にある場合は上書き更新する
+      const updated = customScenarios.some((s) => s.id === newScenario.id)
+        ? customScenarios.map((s) => (s.id === newScenario.id ? newScenario : s))
+        : [...customScenarios, newScenario]
+      setCustomScenarios(updated)
+      saveCustomScenarios(updated)
+      alert(t.confirm.customScenarioImported(newScenario.title))
+    } catch {
+      // ファイル未選択・キャンセルの場合は何もしない
+    }
+  }, [importJson, customScenarios, t.confirm])
 
   const handleExport = useCallback(async () => {
     // コード実行後に生成された db-dump.sql があれば databaseSnapshot として同梱する。
@@ -270,12 +336,24 @@ export default function ProgrammingPage() {
       setSavedFiles(nextFiles)
       setActiveFile('index.ts')
       clearOutput()
-      // シナリオが変わったら前のクリア通知を隠す
+      // シナリオが変わったら採点状態をリセットする
       setShowClearNotification(false)
+      setClearItems(nextScenario.clearCriteria ? progClearItems(nextScenario.clearCriteria) : [])
       // URLを更新してシナリオへの直接リンクを可能にする
       navigate(`/programming/${nextScenario.id}`)
     }, `シナリオ「${nextScenario.title}」に移動`)
   }
+
+  const handleDeleteCustomScenario = useCallback((targetId: string, title: string) => {
+    if (!window.confirm(t.confirm.deleteCustomScenario(title))) return
+    const updated = customScenarios.filter((s) => s.id !== targetId)
+    setCustomScenarios(updated)
+    saveCustomScenarios(updated)
+    // 削除対象が現在選択中の場合は最初の組み込みシナリオに戻す
+    if (scenario.id === targetId) {
+      handleScenarioSelect(programmingScenarios[0])
+    }
+  }, [customScenarios, scenario.id, t.confirm]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRun = () => {
     run(files)
@@ -342,14 +420,41 @@ export default function ProgrammingPage() {
       scenarioContents: debouncedScenarioContents,
       updatedAt: new Date().toISOString(),
     }
+    // localStorage に同期書き込みし、次回の初回レンダリングを高速化する。
+    // IndexedDB にも非同期で書くことで、localStorage がクリアされても復元できる。
     localStorage.setItem(LS_KEY, JSON.stringify(progress))
+    void saveToIndexedDb(LS_KEY, progress)
   }, [debouncedScenarioId, debouncedScenarioContents])
+
+  // localStorage が空の場合（ブラウザによる自動クリア等）に
+  // IndexedDB から進捗を復元する。マウント時に一度だけ実行する。
+  useEffect(() => {
+    if (Object.keys(savedProgress.scenarioContents).length > 0) return
+    loadFromIndexedDb<ProgProgressV2>(LS_KEY).then((progress) => {
+      if (!isProgProgressV2(progress)) return
+      const restoredScenario =
+        programmingScenarios.find((s) => s.id === progress.scenarioId) ?? programmingScenarios[0]
+      setScenario(restoredScenario)
+      setScenarioContents(progress.scenarioContents)
+      const restoredFiles = progress.scenarioContents[restoredScenario.id] ?? restoredScenario.files
+      setFiles(restoredFiles)
+      setSavedFiles(restoredFiles)
+      // 次回以降の高速読み込みのために localStorage にも書き戻す
+      localStorage.setItem(LS_KEY, JSON.stringify(progress))
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const { markCompleted, isCompleted } = useCompletedScenarios()
 
   // クリア通知の表示フラグ（採点合格時に true になり、タイマーで自動的に消える）
   const [showClearNotification, setShowClearNotification] = useState(false)
+
+  // クリア条件チェックリスト。採点前は ok: null、採点後は ok: true/false。
+  // シナリオ切り替え時に初期化するため scenario.id を依存に含める。
+  const [clearItems, setClearItems] = useState<ClearItem[]>(() =>
+    scenario.clearCriteria ? progClearItems(scenario.clearCriteria) : []
+  )
 
   // output を常に最新値で保持する ref。
   // 実行完了を検知する status effect から output を参照するために使う。
@@ -377,8 +482,10 @@ export default function ProgrammingPage() {
   // outputRef.current は前の render で同期済みのため、ここで読んでも最新値が取れる。
   useEffect(() => {
     if (runCompletedCount === 0 || !scenario.clearCriteria) return
-    const passed = judgeProgOutput(outputRef.current, scenario.clearCriteria)
-    if (passed && !isCompleted('programming', scenario.id)) {
+    const result = judgeProgDetail(outputRef.current, scenario.clearCriteria)
+    // ClearItem 形式に変換して項目ごとの合否を更新する
+    setClearItems(result.checks.map((c) => ({ label: c.label, ok: c.ok })))
+    if (result.passed && !isCompleted('programming', scenario.id)) {
       markCompleted('programming', scenario.id)
       setShowClearNotification(true)
     }
@@ -487,6 +594,8 @@ export default function ProgrammingPage() {
 
   return (
     <div className="flex h-full flex-col bg-dark-bg dark:bg-dark-bg light:bg-light-bg">
+      {/* モバイル端末向け警告バナー（sm 以上は CSS で非表示） */}
+      <MobileWarning />
       <div className="flex h-9 flex-shrink-0 items-center gap-2 border-b border-dark-border bg-dark-tab px-3 dark:border-dark-border dark:bg-dark-tab light:border-light-border light:bg-light-tab">
         <button
           onClick={() => guardNavigate(() => navigate('/'), 'トップページに戻る')}
@@ -562,6 +671,51 @@ export default function ProgrammingPage() {
                   <CheckCircle2 size={12} className="mt-0.5 flex-shrink-0 text-green-400" aria-label="完了済み" />
                 )}
               </button>
+            ))}
+
+            {/* カスタムシナリオセクション */}
+            <div className="mt-1 border-t border-dark-border px-3 pb-1 pt-2 dark:border-dark-border light:border-light-border">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
+                  {t.sidebar.customScenarios}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleImportCustomScenario}
+                  title={t.sidebar.importCustomScenario}
+                  aria-label={t.sidebar.importCustomScenario}
+                  className="rounded px-1.5 py-0.5 text-xs text-dark-textDim transition-colors hover:bg-dark-hover hover:text-dark-text dark:text-dark-textDim dark:hover:bg-dark-hover dark:hover:text-dark-text light:text-light-textDim light:hover:bg-light-hover light:hover:text-light-text"
+                >
+                  {t.sidebar.importCustomScenario}
+                </button>
+              </div>
+            </div>
+            {customScenarios.map((s) => (
+              <div
+                key={s.id}
+                className={`group flex w-full items-start gap-1 px-3 py-2 text-xs transition-colors ${
+                  scenario.id === s.id
+                    ? 'bg-dark-active text-dark-text dark:bg-dark-active dark:text-dark-text light:bg-light-active light:text-light-text'
+                    : 'text-dark-textDim hover:bg-dark-hover hover:text-dark-text dark:text-dark-textDim dark:hover:bg-dark-hover dark:hover:text-dark-text light:text-light-textDim light:hover:bg-light-hover light:hover:text-light-text'
+                }`}
+              >
+                <button
+                  onClick={() => handleScenarioSelect(s)}
+                  className="flex flex-1 items-start gap-2 text-left"
+                >
+                  <ChevronRight size={12} className="mt-0.5 flex-shrink-0 text-purple-400" />
+                  <span className="flex-1 leading-relaxed">{s.title}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCustomScenario(s.id, s.title)}
+                  title={t.sidebar.deleteCustomScenario}
+                  aria-label={t.sidebar.deleteCustomScenario}
+                  className="ml-1 flex-shrink-0 opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-400"
+                >
+                  <X size={11} />
+                </button>
+              </div>
             ))}
           </div>
 
@@ -660,6 +814,39 @@ export default function ProgrammingPage() {
             onSave={handleExport}
             onLoad={handleImport}
             onReset={handleReset}
+            extra={
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleShare}
+                  title={t.toolbar.shareTooltip}
+                  aria-label={t.toolbar.share}
+                  className={`flex items-center gap-1 rounded px-2.5 py-1 text-xs transition-colors ${
+                    shareCopied
+                      ? 'text-green-400'
+                      : 'text-dark-textDim hover:bg-dark-hover hover:text-dark-text dark:text-dark-textDim dark:hover:bg-dark-hover dark:hover:text-dark-text light:text-light-textDim light:hover:bg-light-hover light:hover:text-light-text'
+                  }`}
+                >
+                  {shareCopied ? (
+                    <><Check size={12} />{t.toolbar.shareCopied}</>
+                  ) : (
+                    <><Link2 size={12} />{t.toolbar.share}</>
+                  )}
+                </button>
+                <select
+                  value={codeThemeId}
+                  onChange={(e) => setCodeThemeId(e.target.value as CodeThemeId)}
+                  title={t.toolbar.codeTheme}
+                  aria-label={t.toolbar.codeTheme}
+                  className="rounded border border-dark-border bg-dark-tab px-1.5 py-0.5 text-xs text-dark-textDim focus:outline-none dark:border-dark-border dark:bg-dark-tab dark:text-dark-textDim light:border-light-border light:bg-light-tab light:text-light-textDim"
+                >
+                  {CODE_THEMES.map((th) => (
+                    <option key={th.id} value={th.id}>
+                      {locale === 'ja' ? th.labelJa : th.labelEn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            }
           />
 
           <div className="flex-1 overflow-hidden">
@@ -675,6 +862,7 @@ export default function ProgrammingPage() {
                 onChange={updateActiveFile}
                 language="typescript"
                 extraTsCompletions={extraTsCompletions}
+                themeExtension={codeThemeExtension}
               />
             )}
           </div>
@@ -707,6 +895,7 @@ export default function ProgrammingPage() {
             solution={scenario.solution}
             currentContent={files}
             onSolutionViewed={() => markCompleted('programming', scenario.id)}
+            clearItems={clearItems}
           />
         </div>
       </div>

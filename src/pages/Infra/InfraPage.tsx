@@ -14,6 +14,7 @@ import { XTerminal } from '../../components/InfraTerminal/Terminal/XTerminal'
 import { FileTreeVisualizer } from '../../components/InfraTerminal/FileTreeVisualizer/FileTreeVisualizer'
 import { MissionPanel } from '../../components/InfraTerminal/MissionPanel/MissionPanel'
 import { infraMissions, INFRA_CATEGORIES, getMissionsByCategory, type InfraMission, type InfraCategory } from '../../missions/infra'
+import { MobileWarning } from '../../components/MobileWarning/MobileWarning'
 
 // ─── 永続化 ──────────────────────────────────────────────────────────────────
 
@@ -75,6 +76,11 @@ export default function InfraPage() {
   const [collapsedCategories, setCollapsedCategories] = useState<Set<InfraCategory>>(new Set())
   const isCurrentCleared = clearedIds.has(currentMission.id)
 
+  // バリデーション結果（ルールごと）。null = 未チェック（ミッション切替時にリセット）
+  const [lastValidationResults, setLastValidationResults] = useState<Array<boolean | null>>(
+    () => currentMission.validation.map(() => null)
+  )
+
   const nextMission = useMemo(() => {
     const idx = infraMissions.findIndex((m) => m.id === currentMission.id)
     return idx < infraMissions.length - 1 ? infraMissions[idx + 1] : null
@@ -133,7 +139,7 @@ export default function InfraPage() {
 
   // ─── WebContainer ─────────────────────────────────────────────────────────
 
-  const { status, fileTree, spawnShell, resizeShell, setupMission, refreshFileTree, validate } =
+  const { status, fileTree, spawnShell, resizeShell, setupMission, refreshFileTree, validate, runCommand } =
     useInfraContainer(hasConsented)
 
   const terminalRef = useRef<Terminal | null>(null)
@@ -225,8 +231,10 @@ export default function InfraPage() {
     if (status !== 'ready') return
     const timerId = setInterval(async () => {
       if (clearedIds.has(currentMission.id)) return
-      const passed = await validate(currentMission.validation)
-      if (!passed) return
+      const results = await validate(currentMission.validation)
+      // 合否に関わらず結果を記録し、ミッションタブに表示できるようにする
+      setLastValidationResults(results)
+      if (!results.every((r) => r)) return
       setClearedIds((prev) => {
         const next = new Set([...prev, currentMission.id])
         saveClearedIds(next)
@@ -235,6 +243,11 @@ export default function InfraPage() {
     }, 5000)
     return () => clearInterval(timerId)
   }, [status, currentMission, clearedIds, validate])
+
+  // ミッション切替時にバリデーション結果をリセットする
+  useEffect(() => {
+    setLastValidationResults(currentMission.validation.map(() => null))
+  }, [currentMission.id, currentMission.validation])
 
   // ─── ファイルツリーポーリング（3秒おき） ─────────────────────────────────
 
@@ -285,6 +298,21 @@ export default function InfraPage() {
 
   const handleRefreshTree = () => refreshFileTree()
 
+  // 手動で即座にバリデーションを実行し、結果を表示する。
+  // 5秒ポーリングを待たずにフィードバックを得るために使う。
+  const handleCheckNow = useCallback(async () => {
+    if (status !== 'ready') return
+    const results = await validate(currentMission.validation)
+    setLastValidationResults(results)
+    if (results.every((r) => r) && !clearedIds.has(currentMission.id)) {
+      setClearedIds((prev) => {
+        const next = new Set([...prev, currentMission.id])
+        saveClearedIds(next)
+        return next
+      })
+    }
+  }, [status, validate, currentMission, clearedIds])
+
   const toggleCategory = (cat: InfraCategory) => {
     setCollapsedCategories((prev) => {
       const next = new Set(prev)
@@ -312,6 +340,8 @@ export default function InfraPage() {
 
   return (
     <div className="flex h-full flex-col bg-dark-bg dark:bg-dark-bg light:bg-light-bg">
+      {/* モバイル端末向け警告バナー（sm 以上は CSS で非表示） */}
+      <MobileWarning />
       {/* ─── ナビゲーションバー ─────────────────────────────────────────── */}
       <div className="flex h-9 flex-shrink-0 items-center gap-2 border-b border-dark-border bg-dark-tab px-3 dark:border-dark-border dark:bg-dark-tab light:border-light-border light:bg-light-tab">
         <button
@@ -494,14 +524,24 @@ export default function InfraPage() {
               hintsLabel:        t.infra.ui.hintsLabel,
               answerLabel:       t.infra.ui.answerLabel,
               commandsLabel:     t.infra.ui.commandsLabel,
+              processLabel:      t.infra.ui.processLabel,
               showHintButton:    t.infra.ui.showHintButton,
               allHintsShown:     t.infra.ui.allHintsShown,
               showAnswerButton:  t.infra.ui.showAnswerButton,
               hideAnswerButton:  t.infra.ui.hideAnswerButton,
               answerWarning:     t.infra.ui.answerWarning,
-              clearBanner:       t.infra.ui.clearBanner,
-              nextMissionButton: t.infra.ui.nextMissionButton,
+              clearBanner:           t.infra.ui.clearBanner,
+              nextMissionButton:     t.infra.ui.nextMissionButton,
+              validationLabel:       t.infra.ui.validationLabel,
+              validationCheckNow:    t.infra.ui.validationCheckNow,
+              validationLastPassed:  t.infra.ui.validationLastPassed,
+              validationLastFailed:  t.infra.ui.validationLastFailed,
+              validationPollingNote: t.infra.ui.validationPollingNote,
             }}
+            // コンテナ起動済みのときのみ runCommand/onCheckNow を渡す
+            runCommand={status === 'ready' ? runCommand : undefined}
+            lastValidationResults={lastValidationResults}
+            onCheckNow={status === 'ready' ? handleCheckNow : undefined}
           />
         </div>
       </div>
