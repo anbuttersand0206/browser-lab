@@ -57,6 +57,18 @@ export default function TopPage() {
       {/* コースカード */}
       <div className="flex flex-wrap justify-center gap-6 px-6">
         <CourseCard
+          icon={<Server size={28} />}
+          title={t.top.infraCourse.title}
+          description={t.top.infraCourse.description}
+          badges={['Linux', 'Shell', 'WebContainers']}
+          scenarios={t.top.infraCourse.scenarios}
+          includedLabel={t.top.includedScenarios}
+          startLabel={t.top.startCourse}
+          onClick={() => navigate('/infra')}
+          color="orange"
+        />
+
+        <CourseCard
           icon={<Zap size={28} />}
           title={t.top.programmingCourse.title}
           description={t.top.programmingCourse.description}
@@ -90,18 +102,6 @@ export default function TopPage() {
           startLabel={t.top.startCourse}
           onClick={() => navigate('/algorithm')}
           color="purple"
-        />
-
-        <CourseCard
-          icon={<Server size={28} />}
-          title={t.top.infraCourse.title}
-          description={t.top.infraCourse.description}
-          badges={['Linux', 'Shell', 'WebContainers']}
-          scenarios={t.top.infraCourse.scenarios}
-          includedLabel={t.top.includedScenarios}
-          startLabel={t.top.startCourse}
-          onClick={() => navigate('/infra')}
-          color="orange"
         />
       </div>
     </div>
