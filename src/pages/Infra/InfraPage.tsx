@@ -76,8 +76,10 @@ export default function InfraPage() {
   const [collapsedCategories, setCollapsedCategories] = useState<Set<InfraCategory>>(new Set())
   const isCurrentCleared = clearedIds.has(currentMission.id)
 
-  // バリデーション結果。null = 未チェック（ミッション切替時にリセット）
-  const [lastValidationPassed, setLastValidationPassed] = useState<boolean | null>(null)
+  // バリデーション結果（ルールごと）。null = 未チェック（ミッション切替時にリセット）
+  const [lastValidationResults, setLastValidationResults] = useState<Array<boolean | null>>(
+    () => currentMission.validation.map(() => null)
+  )
 
   const nextMission = useMemo(() => {
     const idx = infraMissions.findIndex((m) => m.id === currentMission.id)
@@ -229,10 +231,10 @@ export default function InfraPage() {
     if (status !== 'ready') return
     const timerId = setInterval(async () => {
       if (clearedIds.has(currentMission.id)) return
-      const passed = await validate(currentMission.validation)
+      const results = await validate(currentMission.validation)
       // 合否に関わらず結果を記録し、ミッションタブに表示できるようにする
-      setLastValidationPassed(passed)
-      if (!passed) return
+      setLastValidationResults(results)
+      if (!results.every((r) => r)) return
       setClearedIds((prev) => {
         const next = new Set([...prev, currentMission.id])
         saveClearedIds(next)
@@ -244,8 +246,8 @@ export default function InfraPage() {
 
   // ミッション切替時にバリデーション結果をリセットする
   useEffect(() => {
-    setLastValidationPassed(null)
-  }, [currentMission.id])
+    setLastValidationResults(currentMission.validation.map(() => null))
+  }, [currentMission.id, currentMission.validation])
 
   // ─── ファイルツリーポーリング（3秒おき） ─────────────────────────────────
 
@@ -300,9 +302,9 @@ export default function InfraPage() {
   // 5秒ポーリングを待たずにフィードバックを得るために使う。
   const handleCheckNow = useCallback(async () => {
     if (status !== 'ready') return
-    const passed = await validate(currentMission.validation)
-    setLastValidationPassed(passed)
-    if (passed && !clearedIds.has(currentMission.id)) {
+    const results = await validate(currentMission.validation)
+    setLastValidationResults(results)
+    if (results.every((r) => r) && !clearedIds.has(currentMission.id)) {
       setClearedIds((prev) => {
         const next = new Set([...prev, currentMission.id])
         saveClearedIds(next)
@@ -538,7 +540,7 @@ export default function InfraPage() {
             }}
             // コンテナ起動済みのときのみ runCommand/onCheckNow を渡す
             runCommand={status === 'ready' ? runCommand : undefined}
-            lastValidationPassed={lastValidationPassed}
+            lastValidationResults={lastValidationResults}
             onCheckNow={status === 'ready' ? handleCheckNow : undefined}
           />
         </div>

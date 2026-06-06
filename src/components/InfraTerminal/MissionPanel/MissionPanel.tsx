@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Terminal, Info, Lightbulb, Lock, BookOpen, CheckCircle2, XCircle, ArrowRight, RefreshCw } from 'lucide-react'
+import { ChevronDown, ChevronRight, Terminal, Info, Lightbulb, Lock, BookOpen, CheckCircle2, XCircle, Circle, ArrowRight, RefreshCw } from 'lucide-react'
 import type { InfraMission, MissionLocale, ValidationRule } from '../../../missions/infra'
 import type { Locale } from '../../../i18n'
 import { ProcessTree } from '../ProcessTree/ProcessTree'
@@ -13,8 +13,8 @@ interface Props {
   ui: MissionPanelUi
   /** コンテナが起動済みの場合に提供される。プロセスツリー取得に使う。 */
   runCommand?: (cmd: string) => Promise<string>
-  /** 直前のバリデーション結果。null = 未チェック、true/false = 合否。 */
-  lastValidationPassed?: boolean | null
+  /** ルールごとのバリデーション結果。null = 未チェック、true/false = 合否。 */
+  lastValidationResults?: Array<boolean | null>
   /** 手動でバリデーションを実行するコールバック。 */
   onCheckNow?: () => void
 }
@@ -144,7 +144,7 @@ type Tab = 'mission' | 'hints' | 'answer' | 'commands' | 'process'
  * ヒントは段階的に開示（最大3段階）し、解答は警告確認後に表示する。
  * ミッションが変わったときは key で再マウントして全状態をリセットする。
  */
-export function MissionPanel({ mission, locale, isCleared, onNextMission, ui, runCommand, lastValidationPassed, onCheckNow }: Props) {
+export function MissionPanel({ mission, locale, isCleared, onNextMission, ui, runCommand, lastValidationResults, onCheckNow }: Props) {
   const content: MissionLocale = mission.locale[locale]
 
   const [activeTab, setActiveTab] = useState<Tab>('mission')
@@ -218,7 +218,7 @@ export function MissionPanel({ mission, locale, isCleared, onNextMission, ui, ru
             category={mission.category}
             validation={mission.validation}
             locale={locale}
-            lastValidationPassed={lastValidationPassed}
+            lastValidationResults={lastValidationResults}
             onCheckNow={onCheckNow}
             expanded={backgroundExpanded}
             onToggleBackground={() => setBackgroundExpanded((v) => !v)}
@@ -280,36 +280,41 @@ function tabLabel(tab: Tab, ui: MissionPanelUi): string {
 function describeValidationRule(rule: ValidationRule, locale: Locale): string {
   if (locale === 'ja') {
     switch (rule.type) {
-      case 'file_exists':    return `ファイル \`${rule.target}\` が存在する`
-      case 'dir_exists':     return `ディレクトリ \`${rule.target}\` が存在する`
-      case 'file_content':   return `\`${rule.target}\` の内容に「${rule.expected}」が含まれる`
-      case 'permission':     return `\`${rule.target}\` のパーミッションが \`${rule.expected}\``
-      case 'symlink_exists': return `シンボリックリンク \`${rule.target}\` が存在する`
-      case 'command_output': return `\`${rule.cmd}\` の出力に「${rule.expected}」が含まれる`
+      case 'file_exists':     return `ファイル \`${rule.target}\` が存在する`
+      case 'file_not_exists': return `ファイル \`${rule.target}\` が存在しない`
+      case 'dir_exists':      return `ディレクトリ \`${rule.target}\` が存在する`
+      case 'file_content':    return `\`${rule.target}\` の内容に「${rule.expected}」が含まれる`
+      case 'permission':      return `\`${rule.target}\` のパーミッションが \`${rule.expected}\``
+      case 'symlink_exists':  return `シンボリックリンク \`${rule.target}\` が存在する`
+      case 'command_output':  return `\`${rule.cmd}\` の出力に「${rule.expected}」が含まれる`
     }
   }
   switch (rule.type) {
-    case 'file_exists':    return `File \`${rule.target}\` exists`
-    case 'dir_exists':     return `Directory \`${rule.target}\` exists`
-    case 'file_content':   return `\`${rule.target}\` contains "${rule.expected}"`
-    case 'permission':     return `\`${rule.target}\` has permission \`${rule.expected}\``
-    case 'symlink_exists': return `Symlink \`${rule.target}\` exists`
-    case 'command_output': return `Output of \`${rule.cmd}\` contains "${rule.expected}"`
+    case 'file_exists':     return `File \`${rule.target}\` exists`
+    case 'file_not_exists': return `File \`${rule.target}\` does not exist`
+    case 'dir_exists':      return `Directory \`${rule.target}\` exists`
+    case 'file_content':    return `\`${rule.target}\` contains "${rule.expected}"`
+    case 'permission':      return `\`${rule.target}\` has permission \`${rule.expected}\``
+    case 'symlink_exists':  return `Symlink \`${rule.target}\` exists`
+    case 'command_output':  return `Output of \`${rule.cmd}\` contains "${rule.expected}"`
   }
 }
 
-// ミッション文タブ: 問題文 + 判定条件 + 折りたたみ式の背景説明 + カテゴリ別補足図
-function MissionTab({ content, ui, category, validation, locale, lastValidationPassed, onCheckNow, expanded, onToggleBackground }: {
+// ミッション文タブ: 問題文 + 判定条件チェックリスト + 折りたたみ式の背景説明 + カテゴリ別補足図
+function MissionTab({ content, ui, category, validation, locale, lastValidationResults, onCheckNow, expanded, onToggleBackground }: {
   content: MissionLocale
   ui: MissionPanelUi
   category: string
-  validation?: ValidationRule
+  validation: ValidationRule[]
   locale: Locale
-  lastValidationPassed?: boolean | null
+  lastValidationResults?: Array<boolean | null>
   onCheckNow?: () => void
   expanded: boolean
   onToggleBackground: () => void
 }) {
+  // 全ルールが未チェック（初期状態）のとき true
+  const allPending = !lastValidationResults || lastValidationResults.every((r) => r === null)
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-orange-400">
@@ -322,9 +327,9 @@ function MissionTab({ content, ui, category, validation, locale, lastValidationP
         {content.description}
       </pre>
 
-      {/* 判定条件 + 直前のチェック結果。条件が何かを事前に示し、
-          合否フィードバックをポーリングに依存せず即座に確認できるようにする。 */}
-      {validation && (
+      {/* 判定条件チェックリスト。全ルールと合否を一覧表示し、
+          どの条件が未達成かをひと目で確認できるようにする。 */}
+      {validation.length > 0 && (
         <div className="rounded-lg border border-dark-border bg-dark-bg/40 p-3 dark:border-dark-border dark:bg-dark-bg/40 light:border-light-border light:bg-gray-50">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-xs font-semibold text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
@@ -342,24 +347,28 @@ function MissionTab({ content, ui, category, validation, locale, lastValidationP
             )}
           </div>
 
-          <p className="mb-2 font-mono text-xs text-dark-text dark:text-dark-text light:text-light-text">
-            {describeValidationRule(validation, locale)}
-          </p>
+          <ul className="space-y-1.5">
+            {validation.map((rule, i) => {
+              const ok = lastValidationResults?.[i] ?? null
+              return (
+                <li key={i} className="flex items-start gap-1.5">
+                  {ok === null  && <Circle       size={12} className="mt-0.5 shrink-0 text-dark-textDim opacity-50" />}
+                  {ok === true  && <CheckCircle2 size={12} className="mt-0.5 shrink-0 text-green-400" />}
+                  {ok === false && <XCircle      size={12} className="mt-0.5 shrink-0 text-red-400" />}
+                  <span className={`font-mono text-xs leading-relaxed ${
+                    ok === null  ? 'text-dark-textDim dark:text-dark-textDim light:text-light-textDim' :
+                    ok === true  ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {describeValidationRule(rule, locale)}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
 
-          {lastValidationPassed === true && (
-            <div className="flex items-center gap-1.5 text-xs text-green-400">
-              <CheckCircle2 size={12} />
-              {ui.validationLastPassed}
-            </div>
-          )}
-          {lastValidationPassed === false && (
-            <div className="flex items-center gap-1.5 text-xs text-red-400">
-              <XCircle size={12} />
-              {ui.validationLastFailed}
-            </div>
-          )}
-          {(lastValidationPassed === null || lastValidationPassed === undefined) && (
-            <p className="text-xs text-dark-textDim opacity-60 dark:text-dark-textDim light:text-light-textDim">
+          {/* 初回表示時のみポーリング中であることを示す */}
+          {allPending && (
+            <p className="mt-2 text-xs text-dark-textDim opacity-60 dark:text-dark-textDim light:text-light-textDim">
               {ui.validationPollingNote}
             </p>
           )}

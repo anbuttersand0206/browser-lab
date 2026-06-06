@@ -60,7 +60,7 @@ export const textMissions: InfraMission[] = [
         '10.0.0.1 - - [01/Jan/2024] "GET /logout HTTP/1.1" 200 123',
       ].join('\n') + '\n',
     },
-    validation: { type: 'file_exists', target: '/home/user/first3.txt' },
+    validation: [{ type: 'file_exists', target: '/home/user/first3.txt' }],
   },
 
   {
@@ -128,7 +128,7 @@ export const textMissions: InfraMission[] = [
         '2024-01-01 10:10:00 INFO  Request: GET /health',
       ].join('\n') + '\n',
     },
-    validation: { type: 'file_exists', target: '/home/user/errors.txt' },
+    validation: [{ type: 'file_exists', target: '/home/user/errors.txt' }],
   },
 
   {
@@ -189,7 +189,7 @@ export const textMissions: InfraMission[] = [
         '5,eve,user',
       ].join('\n') + '\n',
     },
-    validation: { type: 'file_exists', target: '/home/user/usernames.txt' },
+    validation: [{ type: 'file_exists', target: '/home/user/usernames.txt' }],
   },
 
   {
@@ -253,7 +253,7 @@ export const textMissions: InfraMission[] = [
         '2024-01-01 10:15:30 ERROR Out of memory',
       ].join('\n') + '\n',
     },
-    validation: { type: 'file_exists', target: '/home/user/result.txt' },
+    validation: [{ type: 'file_exists', target: '/home/user/result.txt' }],
   },
 
   {
@@ -311,6 +311,7 @@ export const textMissions: InfraMission[] = [
         '2024-01-01 INFO  Service recovered',
       ].join('\n') + '\n',
     },
-    validation: { type: 'file_exists', target: '/home/user/error_count.txt' },
+    // app.log に ERROR が3行あるため、内容が "3" になっているかまで確認する
+    validation: [{ type: 'file_content', target: '/home/user/error_count.txt', expected: '3' }],
   },
 ]

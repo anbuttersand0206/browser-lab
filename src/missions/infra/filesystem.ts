@@ -54,8 +54,12 @@ export const filesystemMissions: InfraMission[] = [
       '/home/user/README.txt': 'Welcome to the filesystem module!\nYour working directory is /home/user.\n',
     },
     setupDirs: ['/home/user'],
-    // projects/web ディレクトリが存在すればクリア
-    validation: { type: 'dir_exists', target: '/home/user/projects/web' },
+    // 3つのディレクトリが揃ってクリア（mkdir -p で全部作ることを促す）
+    validation: [
+      { type: 'dir_exists', target: '/home/user/projects/web' },
+      { type: 'dir_exists', target: '/home/user/projects/api' },
+      { type: 'dir_exists', target: '/home/user/logs' },
+    ],
   },
 
   {
@@ -115,8 +119,12 @@ export const filesystemMissions: InfraMission[] = [
       '/home/user/temp.txt':  'Temporary file\n',
     },
     setupDirs: ['/home/user/backup', '/home/user/archive'],
-    // backup/notes.txt が存在すればクリア
-    validation: { type: 'file_exists', target: '/home/user/backup/notes.txt' },
+    // コピー・移動・削除の3ステップが全て完了したことを確認
+    validation: [
+      { type: 'file_exists',     target: '/home/user/backup/notes.txt' },
+      { type: 'file_exists',     target: '/home/user/archive/old.txt' },
+      { type: 'file_not_exists', target: '/home/user/temp.txt' },
+    ],
   },
 
   {
@@ -168,7 +176,7 @@ export const filesystemMissions: InfraMission[] = [
     setupFiles: {
       '/home/user/v1.0/index.html': '<html><body>Version 1.0</body></html>\n',
     },
-    validation: { type: 'symlink_exists', target: '/home/user/current' },
+    validation: [{ type: 'symlink_exists', target: '/home/user/current' }],
   },
 
   {
@@ -225,8 +233,7 @@ export const filesystemMissions: InfraMission[] = [
       '/home/user/app/logs/access.log':'127.0.0.1 GET /\n',
       '/home/user/config.txt':         'debug=true\n',
     },
-    // find の結果ファイルが存在すればクリア
-    validation: { type: 'file_exists', target: '/home/user/found.txt' },
+    validation: [{ type: 'file_exists', target: '/home/user/found.txt' }],
   },
 
   {
@@ -282,6 +289,6 @@ export const filesystemMissions: InfraMission[] = [
       '/home/user/app/src/index.js': 'console.log("Hello")\n',
       '/home/user/app/README.md':    '# My App\n',
     },
-    validation: { type: 'file_exists', target: '/home/user/archive.tar.gz' },
+    validation: [{ type: 'file_exists', target: '/home/user/archive.tar.gz' }],
   },
 ]

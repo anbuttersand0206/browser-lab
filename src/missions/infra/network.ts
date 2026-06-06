@@ -83,7 +83,7 @@ const networkMissions: InfraMission[] = [
       },
     },
     setupFiles: { '/home/user/access.log': ACCESS_LOG },
-    validation: { type: 'file_content', target: '/home/user/error_count.txt', expected: '3' },
+    validation: [{ type: 'file_content', target: '/home/user/error_count.txt', expected: '3' }],
   },
 
   {
@@ -127,7 +127,7 @@ const networkMissions: InfraMission[] = [
       },
     },
     setupFiles: { '/home/user/hosts.txt': HOSTS_FILE },
-    validation: { type: 'file_content', target: '/home/user/hosts.txt', expected: 'myapp.local' },
+    validation: [{ type: 'file_content', target: '/home/user/hosts.txt', expected: 'myapp.local' }],
   },
 
   {
@@ -178,7 +178,7 @@ const networkMissions: InfraMission[] = [
       },
     },
     setupFiles: { '/home/user/response.txt': HTTP_RESPONSE },
-    validation: { type: 'file_content', target: '/home/user/content_type.txt', expected: 'application/json' },
+    validation: [{ type: 'file_content', target: '/home/user/content_type.txt', expected: 'application/json' }],
   },
 
   {
@@ -228,7 +228,7 @@ const networkMissions: InfraMission[] = [
         ],
       },
     },
-    validation: { type: 'command_output', cmd: 'sh /home/user/url_parse.sh', expected: 'api.example.com' },
+    validation: [{ type: 'command_output', cmd: 'sh /home/user/url_parse.sh', expected: 'api.example.com' }],
   },
 ]
 

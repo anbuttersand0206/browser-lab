@@ -58,7 +58,7 @@ export const shellMissions: InfraMission[] = [
       },
     },
     setupDirs: ['/home/user'],
-    validation: { type: 'file_exists', target: '/home/user/path.txt' },
+    validation: [{ type: 'file_exists', target: '/home/user/path.txt' }],
   },
 
   {
@@ -129,7 +129,7 @@ export const shellMissions: InfraMission[] = [
     setupFiles: {
       '/home/user/data.txt': 'some content\n',
     },
-    validation: { type: 'file_exists', target: '/home/user/result.txt' },
+    validation: [{ type: 'file_exists', target: '/home/user/result.txt' }],
   },
 
   {
@@ -187,7 +187,11 @@ export const shellMissions: InfraMission[] = [
       },
     },
     setupDirs: ['/home/user'],
-    validation: { type: 'file_content', target: '/home/user/numbers.txt', expected: '1' },
+    // 1〜5 が揃って書かれていることを確認（1だけでなく5も含むかチェック）
+    validation: [
+      { type: 'file_content', target: '/home/user/numbers.txt', expected: '1' },
+      { type: 'file_content', target: '/home/user/numbers.txt', expected: '5' },
+    ],
   },
 
   {
@@ -256,7 +260,12 @@ export const shellMissions: InfraMission[] = [
       '/home/user/files/config.txt':  'key=value\n',
       '/home/user/files/notes.txt':   'Meeting notes\n',
     },
-    validation: { type: 'file_exists', target: '/home/user/rename.sh' },
+    // スクリプト作成 + 実際にリネームが実行されたことを確認
+    validation: [
+      { type: 'file_exists',     target: '/home/user/rename.sh' },
+      { type: 'file_exists',     target: '/home/user/files/report.bak' },
+      { type: 'file_not_exists', target: '/home/user/files/report.txt' },
+    ],
   },
 
   {
@@ -329,7 +338,7 @@ export const shellMissions: InfraMission[] = [
     },
     setupDirs: ['/home/user'],
     // hello.sh に "Alice" を渡して実行し、出力に "Hello" が含まれることで動作を確認する
-    validation: { type: 'command_output', cmd: 'sh /home/user/hello.sh Alice', expected: 'Hello' },
+    validation: [{ type: 'command_output', cmd: 'sh /home/user/hello.sh Alice', expected: 'Hello' }],
   },
 
   {
@@ -401,6 +410,6 @@ export const shellMissions: InfraMission[] = [
     },
     setupDirs: ['/home/user'],
     // sum.sh に 7 と 3 を渡して実行し、出力に "10" が含まれることで算術機能を確認する
-    validation: { type: 'command_output', cmd: 'sh /home/user/sum.sh 7 3', expected: '10' },
+    validation: [{ type: 'command_output', cmd: 'sh /home/user/sum.sh 7 3', expected: '10' }],
   },
 ]
