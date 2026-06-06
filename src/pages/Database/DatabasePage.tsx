@@ -21,7 +21,7 @@ import { useCompletedScenarios } from '../../hooks/useCompletedScenarios'
 import { databaseScenarios, type DatabaseScenario } from '../../scenarios/database'
 import { validateDatabaseExport, extractDatabaseSnapshot } from '../../lib/importValidator'
 import { formatSql } from '../../lib/sqlFormatter'
-import { judgeDbOutput } from '../../lib/clearJudge'
+import { judgeDbDetail, dbClearItems, type ClearItem } from '../../lib/clearJudge'
 import { encodeShare, decodeShare, readShareFromHash } from '../../lib/shareUrl'
 import { saveToIndexedDb, loadFromIndexedDb } from '../../lib/progressStorage'
 import { CODE_THEMES, type CodeThemeId } from '../../lib/editorThemes'
@@ -284,8 +284,9 @@ export default function DatabasePage() {
       setSql(nextSql)
       setSavedSql(nextSql)
       setLatestResult([])
-      // シナリオが変わったら前のクリア通知を隠す
+      // シナリオが変わったら採点状態をリセットする
       setShowClearNotification(false)
+      setClearItems(nextScenario.clearCriteria ? dbClearItems(nextScenario.clearCriteria) : [])
       // URLを更新してシナリオへの直接リンクを可能にする
       navigate(`/database/${nextScenario.id}`)
     }, `シナリオ「${nextScenario.title}」に移動`)
@@ -293,6 +294,11 @@ export default function DatabasePage() {
 
   // クリア通知の表示フラグ（採点合格時に true になり、タイマーで自動的に消える）
   const [showClearNotification, setShowClearNotification] = useState(false)
+
+  // クリア条件チェックリスト。採点前は ok: null、採点後は ok: true/false。
+  const [clearItems, setClearItems] = useState<ClearItem[]>(() =>
+    scenario.clearCriteria ? dbClearItems(scenario.clearCriteria) : []
+  )
 
   // 採点トリガー用カウンター。実行が完了するたびにインクリメントされる。
   // executeSql の useCallback deps に markCompleted/isCompleted を含めずに済む設計:
@@ -456,8 +462,9 @@ export default function DatabasePage() {
   useEffect(() => {
     // 初回マウント時（execCount === 0）と clearCriteria が未定義のシナリオはスキップ
     if (execCount === 0 || !scenario.clearCriteria) return
-    const passed = judgeDbOutput(lastResultsRef.current, scenario.clearCriteria)
-    if (passed && !isCompleted('database', scenario.id)) {
+    const result = judgeDbDetail(lastResultsRef.current, scenario.clearCriteria)
+    setClearItems(result.checks.map((c) => ({ label: c.label, ok: c.ok })))
+    if (result.passed && !isCompleted('database', scenario.id)) {
       markCompleted('database', scenario.id)
       setShowClearNotification(true)
     }
@@ -754,6 +761,7 @@ export default function DatabasePage() {
             solution={scenario.solution}
             currentContent={sql}
             onSolutionViewed={() => markCompleted('database', scenario.id)}
+            clearItems={clearItems}
           />
         </div>
       </div>

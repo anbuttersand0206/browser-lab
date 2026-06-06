@@ -18,7 +18,7 @@ import { programmingScenarios, type ProgrammingScenario } from '../../scenarios/
 import { validateProgrammingExport, extractDatabaseSnapshot } from '../../lib/importValidator'
 import { getPackageCompletions } from '../../lib/tsCompletions'
 import { useCompletedScenarios } from '../../hooks/useCompletedScenarios'
-import { judgeProgOutput } from '../../lib/clearJudge'
+import { judgeProgDetail, progClearItems, type ClearItem } from '../../lib/clearJudge'
 import { encodeShare, decodeShare, readShareFromHash } from '../../lib/shareUrl'
 import { saveToIndexedDb, loadFromIndexedDb } from '../../lib/progressStorage'
 import { CODE_THEMES, type CodeThemeId } from '../../lib/editorThemes'
@@ -336,8 +336,9 @@ export default function ProgrammingPage() {
       setSavedFiles(nextFiles)
       setActiveFile('index.ts')
       clearOutput()
-      // シナリオが変わったら前のクリア通知を隠す
+      // シナリオが変わったら採点状態をリセットする
       setShowClearNotification(false)
+      setClearItems(nextScenario.clearCriteria ? progClearItems(nextScenario.clearCriteria) : [])
       // URLを更新してシナリオへの直接リンクを可能にする
       navigate(`/programming/${nextScenario.id}`)
     }, `シナリオ「${nextScenario.title}」に移動`)
@@ -449,6 +450,12 @@ export default function ProgrammingPage() {
   // クリア通知の表示フラグ（採点合格時に true になり、タイマーで自動的に消える）
   const [showClearNotification, setShowClearNotification] = useState(false)
 
+  // クリア条件チェックリスト。採点前は ok: null、採点後は ok: true/false。
+  // シナリオ切り替え時に初期化するため scenario.id を依存に含める。
+  const [clearItems, setClearItems] = useState<ClearItem[]>(() =>
+    scenario.clearCriteria ? progClearItems(scenario.clearCriteria) : []
+  )
+
   // output を常に最新値で保持する ref。
   // 実行完了を検知する status effect から output を参照するために使う。
   // status と output は別の useState のため、effect の deps に output を入れると
@@ -475,8 +482,10 @@ export default function ProgrammingPage() {
   // outputRef.current は前の render で同期済みのため、ここで読んでも最新値が取れる。
   useEffect(() => {
     if (runCompletedCount === 0 || !scenario.clearCriteria) return
-    const passed = judgeProgOutput(outputRef.current, scenario.clearCriteria)
-    if (passed && !isCompleted('programming', scenario.id)) {
+    const result = judgeProgDetail(outputRef.current, scenario.clearCriteria)
+    // ClearItem 形式に変換して項目ごとの合否を更新する
+    setClearItems(result.checks.map((c) => ({ label: c.label, ok: c.ok })))
+    if (result.passed && !isCompleted('programming', scenario.id)) {
       markCompleted('programming', scenario.id)
       setShowClearNotification(true)
     }
@@ -886,6 +895,7 @@ export default function ProgrammingPage() {
             solution={scenario.solution}
             currentContent={files}
             onSolutionViewed={() => markCompleted('programming', scenario.id)}
+            clearItems={clearItems}
           />
         </div>
       </div>

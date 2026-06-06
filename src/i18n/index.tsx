@@ -167,6 +167,10 @@ export interface Translations {
     diffAdded: (n: number) => string
     diffRemoved: (n: number) => string
     diffEqual: (n: number) => string
+
+    // クリア条件チェックリスト
+    clearCriteriaLabel: string
+    clearCheckNotYet: string
   }
 
   // 未保存モーダル
@@ -293,6 +297,11 @@ interface InfraTranslations {
     answerWarning: string
     clearBanner: string
     nextMissionButton: string
+    validationLabel: string
+    validationCheckNow: string
+    validationLastPassed: string
+    validationLastFailed: string
+    validationPollingNote: string
     leaveWarningTitle: string
     leaveWarningMessage: string
     leaveCancel: string
@@ -519,6 +528,8 @@ const ja: Translations = {
     diffAdded: (n) => `+${n}行`,
     diffRemoved: (n) => `−${n}行`,
     diffEqual: (n) => `(${n}行一致)`,
+    clearCriteriaLabel: 'クリア条件',
+    clearCheckNotYet: '実行後に結果が表示されます',
   },
   unsavedModal: {
     title: '未保存の変更があります',
@@ -1021,6 +1032,11 @@ const ja: Translations = {
       answerWarning:       '本当に解答例を見ますか？まずヒントをすべて確認してみましょう。',
       clearBanner:         'ミッションクリア！お疲れ様でした 🎉',
       nextMissionButton:   '次のミッションへ',
+      validationLabel:     '判定条件',
+      validationCheckNow:  '今すぐ判定',
+      validationLastPassed: '条件を満たしています ✓',
+      validationLastFailed: '条件を満たしていません',
+      validationPollingNote: '5秒おきに自動チェック中',
       leaveWarningTitle:   'セッションを終了しますか？',
       leaveWarningMessage: 'WebContainerのファイルシステムはページを離れると失われます。作業内容を保存する場合は、ターミナルでファイルをダウンロードしてください。',
       leaveCancel:         'この画面に留まる',
@@ -1171,6 +1187,8 @@ const en: Translations = {
     diffAdded: (n) => `+${n}`,
     diffRemoved: (n) => `−${n}`,
     diffEqual: (n) => `(${n} equal)`,
+    clearCriteriaLabel: 'Clear Criteria',
+    clearCheckNotYet: 'Results shown after running',
   },
   unsavedModal: {
     title: 'Unsaved Changes',
@@ -1673,6 +1691,11 @@ const en: Translations = {
       answerWarning:       'Are you sure? Try all the hints first — they might be enough.',
       clearBanner:         'Mission Complete! Well done 🎉',
       nextMissionButton:   'Next Mission',
+      validationLabel:     'Validation Criteria',
+      validationCheckNow:  'Check Now',
+      validationLastPassed: 'Criteria met ✓',
+      validationLastFailed: 'Criteria not met',
+      validationPollingNote: 'Auto-checking every 5s',
       leaveWarningTitle:   'Leave this session?',
       leaveWarningMessage: 'The WebContainer filesystem will be lost when you leave. Download any files you want to keep before leaving.',
       leaveCancel:         'Stay here',

@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Terminal, Info, Lightbulb, Lock, BookOpen, CheckCircle2, ArrowRight } from 'lucide-react'
-import type { InfraMission, MissionLocale } from '../../../missions/infra'
+import { ChevronDown, ChevronRight, Terminal, Info, Lightbulb, Lock, BookOpen, CheckCircle2, XCircle, ArrowRight, RefreshCw } from 'lucide-react'
+import type { InfraMission, MissionLocale, ValidationRule } from '../../../missions/infra'
 import type { Locale } from '../../../i18n'
 import { ProcessTree } from '../ProcessTree/ProcessTree'
 
@@ -13,6 +13,10 @@ interface Props {
   ui: MissionPanelUi
   /** コンテナが起動済みの場合に提供される。プロセスツリー取得に使う。 */
   runCommand?: (cmd: string) => Promise<string>
+  /** 直前のバリデーション結果。null = 未チェック、true/false = 合否。 */
+  lastValidationPassed?: boolean | null
+  /** 手動でバリデーションを実行するコールバック。 */
+  onCheckNow?: () => void
 }
 
 // ─── ネットワーク構成図（SVG） ────────────────────────────────────────────────
@@ -125,6 +129,11 @@ export interface MissionPanelUi {
   answerWarning: string
   clearBanner: string
   nextMissionButton: string
+  validationLabel: string
+  validationCheckNow: string
+  validationLastPassed: string
+  validationLastFailed: string
+  validationPollingNote: string
 }
 
 type Tab = 'mission' | 'hints' | 'answer' | 'commands' | 'process'
@@ -135,7 +144,7 @@ type Tab = 'mission' | 'hints' | 'answer' | 'commands' | 'process'
  * ヒントは段階的に開示（最大3段階）し、解答は警告確認後に表示する。
  * ミッションが変わったときは key で再マウントして全状態をリセットする。
  */
-export function MissionPanel({ mission, locale, isCleared, onNextMission, ui, runCommand }: Props) {
+export function MissionPanel({ mission, locale, isCleared, onNextMission, ui, runCommand, lastValidationPassed, onCheckNow }: Props) {
   const content: MissionLocale = mission.locale[locale]
 
   const [activeTab, setActiveTab] = useState<Tab>('mission')
@@ -203,7 +212,17 @@ export function MissionPanel({ mission, locale, isCleared, onNextMission, ui, ru
         className={`flex-1 overflow-hidden ${activeTab === 'process' ? '' : 'overflow-auto p-4'}`}
       >
         {activeTab === 'mission' && (
-          <MissionTab content={content} ui={ui} category={mission.category} expanded={backgroundExpanded} onToggleBackground={() => setBackgroundExpanded((v) => !v)} />
+          <MissionTab
+            content={content}
+            ui={ui}
+            category={mission.category}
+            validation={mission.validation}
+            locale={locale}
+            lastValidationPassed={lastValidationPassed}
+            onCheckNow={onCheckNow}
+            expanded={backgroundExpanded}
+            onToggleBackground={() => setBackgroundExpanded((v) => !v)}
+          />
         )}
         {activeTab === 'hints' && (
           <HintsTab content={content} revealed={revealedHints} canReveal={canRevealMoreHints} onReveal={() => setRevealedHints((n) => n + 1)} ui={ui} />
@@ -257,11 +276,37 @@ function tabLabel(tab: Tab, ui: MissionPanelUi): string {
   return ui.processLabel
 }
 
-// ミッション文タブ: 問題文 + 折りたたみ式の背景説明 + カテゴリ別補足図
-function MissionTab({ content, ui, category, expanded, onToggleBackground }: {
+// ValidationRule を人が読める一行テキストに変換する
+function describeValidationRule(rule: ValidationRule, locale: Locale): string {
+  if (locale === 'ja') {
+    switch (rule.type) {
+      case 'file_exists':    return `ファイル \`${rule.target}\` が存在する`
+      case 'dir_exists':     return `ディレクトリ \`${rule.target}\` が存在する`
+      case 'file_content':   return `\`${rule.target}\` の内容に「${rule.expected}」が含まれる`
+      case 'permission':     return `\`${rule.target}\` のパーミッションが \`${rule.expected}\``
+      case 'symlink_exists': return `シンボリックリンク \`${rule.target}\` が存在する`
+      case 'command_output': return `\`${rule.cmd}\` の出力に「${rule.expected}」が含まれる`
+    }
+  }
+  switch (rule.type) {
+    case 'file_exists':    return `File \`${rule.target}\` exists`
+    case 'dir_exists':     return `Directory \`${rule.target}\` exists`
+    case 'file_content':   return `\`${rule.target}\` contains "${rule.expected}"`
+    case 'permission':     return `\`${rule.target}\` has permission \`${rule.expected}\``
+    case 'symlink_exists': return `Symlink \`${rule.target}\` exists`
+    case 'command_output': return `Output of \`${rule.cmd}\` contains "${rule.expected}"`
+  }
+}
+
+// ミッション文タブ: 問題文 + 判定条件 + 折りたたみ式の背景説明 + カテゴリ別補足図
+function MissionTab({ content, ui, category, validation, locale, lastValidationPassed, onCheckNow, expanded, onToggleBackground }: {
   content: MissionLocale
   ui: MissionPanelUi
   category: string
+  validation?: ValidationRule
+  locale: Locale
+  lastValidationPassed?: boolean | null
+  onCheckNow?: () => void
   expanded: boolean
   onToggleBackground: () => void
 }) {
@@ -276,6 +321,50 @@ function MissionTab({ content, ui, category, expanded, onToggleBackground }: {
       <pre className="whitespace-pre-wrap rounded-lg border border-dark-border bg-dark-bg p-3 font-sans text-sm leading-relaxed text-dark-text dark:border-dark-border dark:bg-dark-bg dark:text-dark-text light:border-light-border light:bg-white light:text-light-text">
         {content.description}
       </pre>
+
+      {/* 判定条件 + 直前のチェック結果。条件が何かを事前に示し、
+          合否フィードバックをポーリングに依存せず即座に確認できるようにする。 */}
+      {validation && (
+        <div className="rounded-lg border border-dark-border bg-dark-bg/40 p-3 dark:border-dark-border dark:bg-dark-bg/40 light:border-light-border light:bg-gray-50">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-semibold text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
+              {ui.validationLabel}
+            </span>
+            {/* コンテナ起動済みのときのみ手動判定ボタンを表示する */}
+            {onCheckNow && (
+              <button
+                onClick={onCheckNow}
+                className="flex items-center gap-1 text-xs text-dark-textDim transition-colors hover:text-dark-text dark:text-dark-textDim dark:hover:text-dark-text light:text-light-textDim light:hover:text-light-text"
+              >
+                <RefreshCw size={10} />
+                {ui.validationCheckNow}
+              </button>
+            )}
+          </div>
+
+          <p className="mb-2 font-mono text-xs text-dark-text dark:text-dark-text light:text-light-text">
+            {describeValidationRule(validation, locale)}
+          </p>
+
+          {lastValidationPassed === true && (
+            <div className="flex items-center gap-1.5 text-xs text-green-400">
+              <CheckCircle2 size={12} />
+              {ui.validationLastPassed}
+            </div>
+          )}
+          {lastValidationPassed === false && (
+            <div className="flex items-center gap-1.5 text-xs text-red-400">
+              <XCircle size={12} />
+              {ui.validationLastFailed}
+            </div>
+          )}
+          {(lastValidationPassed === null || lastValidationPassed === undefined) && (
+            <p className="text-xs text-dark-textDim opacity-60 dark:text-dark-textDim light:text-light-textDim">
+              {ui.validationPollingNote}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* ネットワークカテゴリのみ構成図を表示する。
           テキストだけでは掴みにくいプロトコルの流れを視覚的に補足する。 */}

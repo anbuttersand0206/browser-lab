@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { CheckCircle2, XCircle, Circle } from 'lucide-react'
 import { computeLineDiff, summarizeDiff, type DiffLine } from '../../lib/simpleDiff'
 import { useI18n } from '../../i18n'
+import type { ClearItem } from '../../lib/clearJudge'
 
 interface ScenarioPanelProps {
   title: string
@@ -12,6 +14,8 @@ interface ScenarioPanelProps {
   // 模範解答を確認表示したとき（confirming → visible の遷移）に呼ばれるコールバック。
   // シナリオ完了マークを付けるために親コンポーネントが使う。
   onSolutionViewed?: () => void
+  // クリア条件チェックリスト。ok: null は未採点、true/false は採点済み。
+  clearItems?: ClearItem[]
 }
 
 // 差分タブは currentContent が渡されているときのみ表示する
@@ -27,6 +31,7 @@ export function ScenarioPanel({
   solution,
   currentContent,
   onSolutionViewed,
+  clearItems,
 }: ScenarioPanelProps) {
   const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<PanelTab>('problem')
@@ -90,6 +95,9 @@ export function ScenarioPanel({
         {activeTab === 'problem' && (
           <div className="prose prose-sm prose-invert dark:prose-invert max-w-none">
             <MarkdownRenderer text={description} />
+            {clearItems && clearItems.length > 0 && (
+              <ClearCriteriaChecklist items={clearItems} />
+            )}
           </div>
         )}
 
@@ -202,6 +210,62 @@ export function ScenarioPanel({
           <DiffTab currentContent={currentContent!} solution={solution} />
         )}
       </div>
+    </div>
+  )
+}
+
+// ----------------------------------------------------------------
+// クリア条件チェックリスト
+// ----------------------------------------------------------------
+
+function ClearCriteriaChecklist({ items }: { items: ClearItem[] }) {
+  const { t, locale } = useI18n()
+  const allPassed = items.every((item) => item.ok === true)
+  const anyChecked = items.some((item) => item.ok !== null)
+
+  return (
+    <div className="mt-4 rounded-md border border-dark-border bg-dark-bg/40 p-3 dark:border-dark-border dark:bg-dark-bg/40 light:border-light-border light:bg-gray-50">
+      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
+        {allPassed
+          ? <CheckCircle2 size={12} className="text-green-400" />
+          : <Circle size={12} />
+        }
+        {t.scenarioPanel.clearCriteriaLabel}
+      </div>
+
+      <ul className="space-y-1.5">
+        {items.map((item, i) => {
+          const label = locale === 'ja' ? item.label.ja : item.label.en
+          if (item.ok === null) {
+            return (
+              <li key={i} className="flex items-start gap-2 text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
+                <Circle size={12} className="mt-0.5 flex-shrink-0 opacity-40" />
+                <span>{label}</span>
+              </li>
+            )
+          }
+          if (item.ok) {
+            return (
+              <li key={i} className="flex items-start gap-2 text-xs text-green-400">
+                <CheckCircle2 size={12} className="mt-0.5 flex-shrink-0" />
+                <span>{label}</span>
+              </li>
+            )
+          }
+          return (
+            <li key={i} className="flex items-start gap-2 text-xs text-red-400">
+              <XCircle size={12} className="mt-0.5 flex-shrink-0" />
+              <span>{label}</span>
+            </li>
+          )
+        })}
+      </ul>
+
+      {!anyChecked && (
+        <p className="mt-2 text-xs text-dark-textDim dark:text-dark-textDim light:text-light-textDim opacity-60">
+          {t.scenarioPanel.clearCheckNotYet}
+        </p>
+      )}
     </div>
   )
 }
