@@ -66,8 +66,11 @@ const users = [
   { id: 4, name: "Yuki", age: 15 },
 ];
 
-// TODO: 各ユーザーの自己紹介を出力してください
-// TODO: 成人ユーザーのみをフィルタリングして出力してください
+console.log("=== 全ユーザーの自己紹介 ===");
+// TODO: 各ユーザーの自己紹介を出力してください（例: users.forEach(...)）
+
+console.log("\\n=== 成人ユーザーのみ ===");
+// TODO: 成人ユーザーのみをフィルタリングして出力してください（例: filterAdults(users).forEach(...)）
 `,
     'package.json': JSON.stringify({
       name: 'ts-basics',
