@@ -197,7 +197,10 @@ export function AlgorithmRunnerPanel({ accentColor = 'blue' }: AlgorithmRunnerPa
       </div>
 
       {/* ビジュアライザー */}
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div
+        className="min-h-0 flex-1 overflow-hidden"
+        style={{ '--algo-transition': `${Math.min(Math.floor(SPEED_DELAY_MS[speedLevel - 1] * 0.7), 300)}ms` } as React.CSSProperties}
+      >
         <InternalVisualizerSwitch
           type={meta.visualizerType}
           algorithmId={selectedId}

@@ -148,9 +148,12 @@ export function LinkedListVisualizer({ state }: { state: LinkedListState | null 
                   width={NODE_W}
                   height={NODE_H}
                   rx={5}
-                  fill={colors.fill}
-                  stroke={colors.stroke}
                   strokeWidth={2}
+                  style={{
+                    fill: colors.fill,
+                    stroke: colors.stroke,
+                    transition: 'fill var(--algo-transition, 200ms) ease, stroke var(--algo-transition, 200ms) ease',
+                  }}
                 />
                 {/* 値テキスト（左寄り） */}
                 <text

@@ -58,6 +58,11 @@ export interface Translations {
       description: string
       scenarios: readonly string[]
     }
+    networkCourse: {
+      title: string
+      description: string
+      scenarios: readonly string[]
+    }
     includedScenarios: string
     startCourse: string
     downloadReport: string
@@ -258,6 +263,9 @@ export interface Translations {
 
   // インフラ学習コース
   infra: InfraTranslations
+
+  // ネットワーク学習コース
+  network: NetworkTranslations
 }
 
 // ----------------------------------------------------------------
@@ -317,6 +325,14 @@ interface InfraTranslations {
     }
   }
   recommendations: readonly string[]
+}
+
+// ----------------------------------------------------------------
+// NetworkTranslations
+// ----------------------------------------------------------------
+interface NetworkTranslations {
+  pageTitle: string
+  pageSubtitle: string
 }
 
 interface AlgoContent {
@@ -436,6 +452,11 @@ const ja: Translations = {
       title: 'インフラ学習',
       description: 'WebContainersで動く本物のLinuxシェル。コマンドを打つたびにファイルツリーが変化する。「なぜそう動くのか」を体感するインフラ入門。',
       scenarios: ['ファイルシステム操作', 'パーミッションと権限管理', 'テキスト処理とログ解析'],
+    },
+    networkCourse: {
+      title: 'ネットワーク学習',
+      description: 'パケットアニメーションでARPからBGP・TLS・HSRP・マルチキャストまでを視覚的に理解。「なぜ通信できるのか」を35以上のシナリオで追体験するネットワーク学習コース。',
+      scenarios: ['OSIモデル・TCP/IP・カプセル化', 'ARP/VLAN/STP・L2スイッチング', 'RIP/OSPF/BGP・ルーティング', 'TLS/ファイアウォール・セキュリティ', 'HSRP/マルチキャスト・キャンパス設計'],
     },
     includedScenarios: '収録シナリオ',
     startCourse: 'コースを開始',
@@ -1061,6 +1082,10 @@ const ja: Translations = {
       'Chrome / Edge での利用を推奨します（Safari は一部機能が制限される場合があります）',
     ],
   },
+  network: {
+    pageTitle: 'ネットワーク学習コース',
+    pageSubtitle: 'パケットが動くアニメーションでプロトコルを理解する',
+  },
 }
 
 // ----------------------------------------------------------------
@@ -1095,6 +1120,11 @@ const en: Translations = {
       title: 'Infra Learning',
       description: 'A real Linux shell in the browser powered by WebContainers. Watch the file tree change as you type commands.',
       scenarios: ['Filesystem Operations', 'Permissions & Ownership', 'Text Processing & Logs'],
+    },
+    networkCourse: {
+      title: 'Network Lab',
+      description: 'Animated packet visualizations from ARP to BGP, TLS, HSRP, and multicast. Understand how networking really works through 35+ protocol simulations.',
+      scenarios: ['OSI Model / TCP-IP / Encapsulation', 'ARP / VLAN / STP — L2 Switching', 'RIP / OSPF / BGP — Routing', 'TLS / Firewall / Attacks — Security', 'HSRP / Multicast / Campus Design'],
     },
     includedScenarios: 'Included Scenarios',
     startCourse: 'Start Course',
@@ -1719,6 +1749,10 @@ const en: Translations = {
       'Closing other browser tabs improves stability',
       'Chrome or Edge recommended (Safari may have limitations)',
     ],
+  },
+  network: {
+    pageTitle: 'Network Lab',
+    pageSubtitle: 'Understand protocols through animated packet simulations',
   },
 }
 

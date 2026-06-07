@@ -82,9 +82,9 @@ export function GraphVisualizer({ state, mode }: GraphVisualizerProps) {
               <line
                 x1={from.x} y1={from.y}
                 x2={to.x} y2={to.y}
-                stroke={color}
                 strokeWidth={strokeWidth}
                 opacity={es.status === 'rejected' ? 0.3 : 0.8}
+                style={{ stroke: color, transition: 'stroke var(--algo-transition, 200ms) ease' }}
               />
               {/* エッジの重みラベル */}
               <text
@@ -114,9 +114,9 @@ export function GraphVisualizer({ state, mode }: GraphVisualizerProps) {
             <g key={rawNode.id}>
               <circle
                 cx={pos.x} cy={pos.y} r={NODE_RADIUS}
-                fill={color}
                 stroke={rawNode.id === currentNodeId ? '#fff' : 'rgba(0,0,0,0.3)'}
                 strokeWidth={rawNode.id === currentNodeId ? 2.5 : 1}
+                style={{ fill: color, transition: 'fill var(--algo-transition, 200ms) ease' }}
               />
               {/* ノードラベル */}
               <text

@@ -31,21 +31,42 @@ export function HanoiVisualizer({ state }: HanoiVisualizerProps) {
   const poleHeight = diskHeight * (totalDisks + 1) + 10
   const baseY = height - baseHeight - 30
 
-  // disk が 1〜totalDisks の値を持ち、大きいほど幅が広い
   function resolveDiskWidth(diskSize: number): number {
     return minDiskWidth + (diskSize - 1) * (maxDiskWidth - minDiskWidth) / Math.max(1, totalDisks - 1)
+  }
+
+  // 全円盤の絶対座標を計算する（キー: diskSize）
+  // 移動中の円盤はpolesから除外されているため、movingから移動先座標を算出する
+  const diskPositions = new Map<number, { cx: number; y: number; diskWidth: number }>()
+  poles.forEach((poleDisks, poleIdx) => {
+    const poleCenterX = poleSpacing * (poleIdx + 0.5)
+    poleDisks.forEach((diskSize, diskIdx) => {
+      diskPositions.set(diskSize, {
+        cx: poleCenterX,
+        y: baseY - diskHeight * (diskIdx + 1),
+        diskWidth: resolveDiskWidth(diskSize),
+      })
+    })
+  })
+  if (moving) {
+    const destPoleCenterX = poleSpacing * (moving.to + 0.5)
+    diskPositions.set(moving.disk, {
+      cx: destPoleCenterX,
+      y: baseY - diskHeight * (poles[moving.to].length + 1),
+      diskWidth: resolveDiskWidth(moving.disk),
+    })
   }
 
   return (
     <div ref={containerRef} className="h-full w-full">
       <svg width={width} height={height}>
-        {poles.map((poleDisks, poleIdx) => {
+        {/* ポール・ベース・ラベルを先に描画（円盤の下レイヤー） */}
+        {poles.map((_, poleIdx) => {
           const poleCenterX = poleSpacing * (poleIdx + 0.5)
           const isInvolved = moving?.from === poleIdx || moving?.to === poleIdx
 
           return (
             <g key={poleIdx}>
-              {/* ポール（柱） */}
               <rect
                 x={poleCenterX - poleWidth / 2}
                 y={baseY - poleHeight}
@@ -54,7 +75,6 @@ export function HanoiVisualizer({ state }: HanoiVisualizerProps) {
                 fill="#6b7280"
                 rx={3}
               />
-              {/* ベース台 */}
               <rect
                 x={poleCenterX - maxDiskWidth * 0.6}
                 y={baseY}
@@ -63,7 +83,6 @@ export function HanoiVisualizer({ state }: HanoiVisualizerProps) {
                 fill="#4b5563"
                 rx={3}
               />
-              {/* ポールラベル */}
               <text
                 x={poleCenterX}
                 y={height - 8}
@@ -74,43 +93,49 @@ export function HanoiVisualizer({ state }: HanoiVisualizerProps) {
               >
                 {POLE_LABELS[poleIdx]}
               </text>
+            </g>
+          )
+        })}
 
-              {/* 円盤（下から積み上げ順にレンダリング） */}
-              {poleDisks.map((diskSize, diskIdx) => {
-                const diskWidth = resolveDiskWidth(diskSize)
-                const diskX = poleCenterX - diskWidth / 2
-                const diskY = baseY - diskHeight * (diskIdx + 1)
-                const color = DISK_COLORS[(diskSize - 1) % DISK_COLORS.length]
-                const isMovingDisk = moving?.disk === diskSize
+        {/* 全円盤をトップレベルで描画（安定したkeyでCSS transitionが効く） */}
+        {Array.from({ length: totalDisks }, (_, i) => {
+          const diskSize = i + 1
+          const pos = diskPositions.get(diskSize)
+          if (!pos) return null
+          const color = DISK_COLORS[(diskSize - 1) % DISK_COLORS.length]
+          const isMovingDisk = moving?.disk === diskSize
 
-                return (
-                  <g key={diskSize}>
-                    <rect
-                      x={diskX}
-                      y={diskY}
-                      width={diskWidth}
-                      height={diskHeight - 2}
-                      fill={color}
-                      stroke={isMovingDisk ? '#ffffff' : 'rgba(0,0,0,0.3)'}
-                      strokeWidth={isMovingDisk ? 2 : 1}
-                      rx={4}
-                      opacity={isMovingDisk ? 0.8 : 1}
-                    />
-                    {diskWidth > 30 && (
-                      <text
-                        x={poleCenterX}
-                        y={diskY + diskHeight / 2 + 1}
-                        textAnchor="middle"
-                        fontSize={Math.min(11, diskHeight - 6)}
-                        fill="rgba(255,255,255,0.9)"
-                        fontWeight="600"
-                      >
-                        {diskSize}
-                      </text>
-                    )}
-                  </g>
-                )
-              })}
+          return (
+            <g
+              key={diskSize}
+              style={{
+                transform: `translate(${pos.cx - pos.diskWidth / 2}px, ${pos.y}px)`,
+                transition: 'transform var(--algo-transition, 200ms) ease-in-out',
+              }}
+            >
+              <rect
+                x={0}
+                y={0}
+                width={pos.diskWidth}
+                height={diskHeight - 2}
+                fill={color}
+                stroke={isMovingDisk ? '#ffffff' : 'rgba(0,0,0,0.3)'}
+                strokeWidth={isMovingDisk ? 2 : 1}
+                rx={4}
+                opacity={isMovingDisk ? 0.85 : 1}
+              />
+              {pos.diskWidth > 30 && (
+                <text
+                  x={pos.diskWidth / 2}
+                  y={diskHeight / 2 + 1}
+                  textAnchor="middle"
+                  fontSize={Math.min(11, diskHeight - 6)}
+                  fill="rgba(255,255,255,0.9)"
+                  fontWeight="600"
+                >
+                  {diskSize}
+                </text>
+              )}
             </g>
           )
         })}
