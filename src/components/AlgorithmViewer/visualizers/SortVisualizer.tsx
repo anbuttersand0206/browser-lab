@@ -107,8 +107,8 @@ export function SortVisualizer({ state }: SortVisualizerProps) {
                 y={barY}
                 width={barWidth}
                 height={barHeight}
-                fill={color}
                 rx={Math.min(6, barWidth * 0.2)}
+                style={{ fill: color, transition: 'fill var(--algo-transition, 200ms) ease' }}
               />
               {showLabel && (
                 <text

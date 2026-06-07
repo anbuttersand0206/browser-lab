@@ -11,6 +11,7 @@ const DatabasePage = lazy(() => import('./pages/Database/DatabasePage'))
 const AlgorithmPage = lazy(() => import('./pages/Algorithm/AlgorithmPage'))
 // InfraPage は xterm.js を持つため遅延読み込みして初期バンドルサイズを抑える
 const InfraPage = lazy(() => import('./pages/Infra/InfraPage'))
+const NetworkPage = lazy(() => import('./pages/Network/NetworkPage'))
 
 // ルーティング遷移中のフォールバック表示。
 // ページ全体を暗くして、コンテンツ描画前の白いフラッシュを防ぐ。
@@ -35,6 +36,7 @@ export default function App() {
             <Route path="/database/:scenarioId?" element={<DatabasePage />} />
             <Route path="/algorithm" element={<AlgorithmPage />} />
             <Route path="/infra" element={<InfraPage />} />
+            <Route path="/network" element={<NetworkPage />} />
           </Routes>
         </Suspense>
       </HashRouter>

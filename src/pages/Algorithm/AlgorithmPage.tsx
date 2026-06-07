@@ -354,7 +354,10 @@ export default function AlgorithmPage() {
           </div>
 
           {/* ビジュアライザー: 残りスペースを flexbox で自動分配 */}
-          <div className="min-h-0 flex-1 overflow-hidden">
+          <div
+            className="min-h-0 flex-1 overflow-hidden"
+            style={{ '--algo-transition': `${Math.min(Math.floor(SPEED_DELAY_MS[speedLevel - 1] * 0.7), 300)}ms` } as React.CSSProperties}
+          >
             <VisualizerSwitch
               type={visualizerType}
               algorithmId={selectedId}

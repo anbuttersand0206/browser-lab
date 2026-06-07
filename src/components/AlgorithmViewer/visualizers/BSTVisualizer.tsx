@@ -155,9 +155,12 @@ export function BSTVisualizer({ state }: { state: BSTState | null }) {
                   cx={cx}
                   cy={cy}
                   r={NODE_R}
-                  fill={colors.fill}
-                  stroke={colors.stroke}
                   strokeWidth={colors.strokeWidth}
+                  style={{
+                    fill: colors.fill,
+                    stroke: colors.stroke,
+                    transition: 'fill var(--algo-transition, 200ms) ease, stroke var(--algo-transition, 200ms) ease',
+                  }}
                 />
                 <text
                   x={cx}

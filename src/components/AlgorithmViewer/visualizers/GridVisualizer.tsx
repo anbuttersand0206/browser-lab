@@ -151,10 +151,13 @@ export function GridVisualizer({ algorithmId, config, state, isRunning, editMode
                       y={r * cellSize + 0.5}
                       width={cellSize - 1}
                       height={cellSize - 1}
-                      fill={bg}
-                      stroke={stroke}
                       strokeWidth={0.5}
                       rx={1}
+                      style={{
+                        fill: bg,
+                        stroke,
+                        transition: 'fill var(--algo-transition, 200ms) ease',
+                      }}
                     />
                     {isStart && (
                       <text x={c * cellSize + cellSize / 2} y={r * cellSize + cellSize / 2 + 4}

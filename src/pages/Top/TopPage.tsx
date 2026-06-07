@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FlaskConical, Zap, Database, BrainCircuit, Server, Sun, Moon, ArrowRight, Languages, FileText } from 'lucide-react'
+import { FlaskConical, Zap, Database, BrainCircuit, Server, Sun, Moon, ArrowRight, Languages, FileText, Network } from 'lucide-react'
 import { useTheme } from '../../hooks/useTheme'
 import { useI18n } from '../../i18n'
 import { generateProgressReport, downloadMarkdownReport } from '../../lib/progressReport'
@@ -77,7 +77,8 @@ export default function TopPage() {
       </div>
 
       {/* コースカード。モバイルでは縦に並べ、sm 以上では横に折り返す */}
-      <main aria-label={locale === 'ja' ? 'コース一覧' : 'Course list'} className="flex flex-col items-center gap-4 px-4 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-6 sm:px-6">
+      {/* items-stretch で各カードが同じ高さになる */}
+      <main aria-label={locale === 'ja' ? 'コース一覧' : 'Course list'} className="flex flex-col items-stretch gap-4 px-4 sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-center sm:gap-6 sm:px-6">
         <CourseCard
           icon={<Server size={28} />}
           title={t.top.infraCourse.title}
@@ -115,6 +116,18 @@ export default function TopPage() {
         />
 
         <CourseCard
+          icon={<Network size={28} />}
+          title={t.top.networkCourse.title}
+          description={t.top.networkCourse.description}
+          badges={['ARP', 'TCP', 'DNS', 'OSPF']}
+          scenarios={t.top.networkCourse.scenarios}
+          includedLabel={t.top.includedScenarios}
+          startLabel={t.top.startCourse}
+          onClick={() => navigate('/network')}
+          color="cyan"
+        />
+
+        <CourseCard
           icon={<BrainCircuit size={28} />}
           title={t.algorithm.pageTitle}
           description={t.algorithm.pageSubtitle}
@@ -144,7 +157,7 @@ interface CourseCardProps {
   includedLabel: string
   startLabel: string
   onClick: () => void
-  color: 'blue' | 'green' | 'purple' | 'orange'
+  color: 'blue' | 'green' | 'purple' | 'orange' | 'cyan'
 }
 
 function CourseCard({
@@ -154,22 +167,25 @@ function CourseCard({
     color === 'blue'   ? 'border-blue-500/40 hover:border-blue-500' :
     color === 'green'  ? 'border-green-500/40 hover:border-green-500' :
     color === 'orange' ? 'border-orange-500/40 hover:border-orange-500' :
+    color === 'cyan'   ? 'border-cyan-500/40 hover:border-cyan-500' :
     'border-purple-500/40 hover:border-purple-500'
   const iconBg =
     color === 'blue'   ? 'bg-blue-500/10 text-blue-400' :
     color === 'green'  ? 'bg-green-500/10 text-green-400' :
     color === 'orange' ? 'bg-orange-500/10 text-orange-400' :
+    color === 'cyan'   ? 'bg-cyan-500/10 text-cyan-400' :
     'bg-purple-500/10 text-purple-400'
   const badgeBg =
     color === 'blue'   ? 'bg-blue-500/20 text-blue-400' :
     color === 'green'  ? 'bg-green-500/20 text-green-400' :
     color === 'orange' ? 'bg-orange-500/20 text-orange-400' :
+    color === 'cyan'   ? 'bg-cyan-500/20 text-cyan-400' :
     'bg-purple-500/20 text-purple-400'
 
   return (
     <button
       onClick={onClick}
-      className={`group flex w-full flex-col rounded-xl border-2 bg-dark-sidebar p-6 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-xl dark:bg-dark-sidebar light:bg-light-sidebar sm:w-80 ${accent}`}
+      className={`group flex h-full w-full flex-col rounded-xl border-2 bg-dark-sidebar p-6 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-xl dark:bg-dark-sidebar light:bg-light-sidebar sm:w-80 ${accent}`}
     >
       <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl ${iconBg}`}>
         {icon}
@@ -179,7 +195,8 @@ function CourseCard({
         {title}
       </h2>
 
-      <p className="mb-4 text-sm leading-relaxed text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
+      {/* flex-1 で説明文がカードの余白を埋め、下部コンテンツを底揃えにする */}
+      <p className="mb-4 flex-1 text-sm leading-relaxed text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
         {description}
       </p>
 

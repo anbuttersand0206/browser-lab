@@ -97,10 +97,13 @@ export function ArraySearchVisualizer({ state, type }: ArraySearchVisualizerProp
                 y={startY}
                 width={cellWidth - 2}
                 height={cellHeight}
-                fill={resolveCellBg(idx)}
-                stroke={resolveStrokeColor(idx)}
                 strokeWidth={1.5}
                 rx={4}
+                style={{
+                  fill: resolveCellBg(idx),
+                  stroke: resolveStrokeColor(idx),
+                  transition: 'fill var(--algo-transition, 200ms) ease',
+                }}
               />
               <text
                 x={cellX + cellWidth / 2}
