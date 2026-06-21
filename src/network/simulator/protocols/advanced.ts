@@ -23,7 +23,7 @@ function empty(
 
 function pkt(
   id: string,
-  type: 'ospf_hello' | 'ospf_lsa' | 'ospf_lsack' | 'bgp_open' | 'bgp_update' | 'bgp_keepalive' | 'generic',
+  type: 'ospf_hello' | 'ospf_lsa' | 'ospf_lsack' | 'bgp_open' | 'bgp_update' | 'bgp_keepalive' | 'generic' | 'icmp_request' | 'http_request' | 'dhcp_discover' | 'tls_data',
   from: string,
   to: string,
   progress: number,
@@ -187,9 +187,17 @@ export function* naptDetailSimulator(topology: Topology): NetworkStepGenerator {
   const c1 = clients[0] ?? topology.nodes[0]!
   const c2 = clients[1] ?? topology.nodes[1]!
   const natRouter = topology.nodes.find(n => n.type === 'router') ?? topology.nodes[2]!
+  const inet = topology.nodes.find(n => n.type === 'internet') ?? topology.nodes[3]!
 
   yield {
-    state: empty(topology, [], 'table_concept'),
+    state: empty(topology, [
+      pkt('napt-c1', 'http_request', c1.id, natRouter.id, 0, {
+        'Src': `${c1.ip ?? '192.168.1.10'}:50001`, 'Dst': '8.8.8.8:80', 'Session': '#1',
+      }),
+      pkt('napt-c2', 'http_request', c2.id, natRouter.id, 0, {
+        'Src': `${c2.ip ?? '192.168.1.20'}:60001`, 'Dst': '8.8.8.8:80', 'Session': '#2',
+      }),
+    ], 'table_concept'),
     log: {
       ja: 'NAPTテーブル（PAT: Port Address Translation）: プライベートIPとポートの組み合わせをグローバルIPとポートに1対1でマッピング。同時接続数はポート番号の数（最大65535）に制限される。',
       en: 'NAPT table (PAT): Maps private IP+port pairs to global IP+port 1-to-1. Max concurrent sessions limited by port numbers (~65535).',
@@ -197,7 +205,14 @@ export function* naptDetailSimulator(topology: Topology): NetworkStepGenerator {
   }
 
   yield {
-    state: empty(topology, [], 'multi_session'),
+    state: empty(topology, [
+      pkt('napt-t1', 'http_request', natRouter.id, inet.id, 0, {
+        'Translated from': `${c1.ip ?? '192.168.1.10'}:50001`, 'Translated to': `${natRouter.ip ?? '203.0.113.1'}:8001`,
+      }),
+      pkt('napt-t2', 'http_request', natRouter.id, inet.id, 0.4, {
+        'Translated from': `${c2.ip ?? '192.168.1.20'}:60001`, 'Translated to': `${natRouter.ip ?? '203.0.113.1'}:8003`,
+      }),
+    ], 'multi_session'),
     log: {
       ja: `NAPTテーブル例: ${c1.ip ?? '192.168.1.10'}:50001→8.8.8.8:80 は ${natRouter.ip ?? '203.0.113.1'}:8001 にマップ。${c2.ip ?? '192.168.1.20'}:60001→8.8.8.8:80 は ${natRouter.ip ?? '203.0.113.1'}:8003 にマップ。同一グローバルIPを複数クライアントが共有。`,
       en: `NAPT table: ${c1.ip ?? '192.168.1.10'}:50001→8.8.8.8:80 mapped to 203.0.113.1:8001. ${c2.ip ?? '192.168.1.20'}:60001→8.8.8.8:80 mapped to 203.0.113.1:8003. Multiple clients share one global IP.`,
@@ -205,19 +220,29 @@ export function* naptDetailSimulator(topology: Topology): NetworkStepGenerator {
   }
 
   yield {
-    state: empty(topology, [], 'restrictions'),
+    state: empty(topology, [
+      pkt('napt-r', 'generic', inet.id, natRouter.id, 0, {
+        'Limitation': 'External → Internal blocked', 'Solution': 'Port forwarding / UPnP / DMZ',
+      }),
+    ], 'restrictions'),
     log: {
       ja: 'NAPTの制限: ① 外部から内部への通信開始が不可（UPnP/DMZ/ポートフォワーディングで解決）。② VPNプロトコルによっては問題（NAT-T/ESP）。③ ALG（Application Layer Gateway）がSIP等の埋め込みIPアドレスを変換。',
       en: 'NAPT limitations: ① External cannot initiate connections (solve with UPnP/DMZ/port forwarding). ② Some VPN protocols issues (NAT-T/ESP). ③ ALG rewrites embedded IPs in SIP etc.',
     },
+    highlightPacketId: 'napt-r',
   }
 
   yield {
-    state: empty(topology, [], 'hairpin'),
+    state: empty(topology, [
+      pkt('napt-h', 'generic', c1.id, natRouter.id, 0.5, {
+        'Hairpin NAT': 'c1 accesses server via global domain', 'NAT reflects': 'traffic back internally',
+      }),
+    ], 'hairpin'),
     log: {
       ja: 'ヘアピンNAT（NATループバック）: 内部クライアントが外部ドメイン名（グローバルIP）で内部サーバーにアクセスする際、NATルーターが折り返してルーティングする仕組み。対応していないルーターも多い。',
       en: 'Hairpin NAT (NAT loopback): Internal client accesses internal server via its global domain name. Router reflects traffic back internally. Not all routers support this.',
     },
+    highlightPacketId: 'napt-h',
   }
 }
 
@@ -251,7 +276,10 @@ export function* dijkstraDemoSimulator(topology: Topology): NetworkStepGenerator
   }
 
   yield {
-    state: empty(topology, [], 'step1', undefined, {
+    state: empty(topology, [
+      pkt('dijk-1a', 'ospf_lsa', src.id, mid1.id, 0, { 'Exploring': mid1.label, 'Tentative cost': '10' }),
+      pkt('dijk-1b', 'ospf_lsa', src.id, mid2.id, 0, { 'Exploring': mid2.label, 'Tentative cost': '20' }),
+    ], 'step1', undefined, {
       [src.id]: [
         route('0.0.0.0', 0, 'local', 'lo', 0),
         route(mid1.ip ?? '10.0.2.0', 24, mid1.ip ?? '10.0.2.1', 'eth0', 10),
@@ -265,7 +293,9 @@ export function* dijkstraDemoSimulator(topology: Topology): NetworkStepGenerator
   }
 
   yield {
-    state: empty(topology, [], 'step2', undefined, {
+    state: empty(topology, [
+      pkt('dijk-2', 'ospf_lsa', mid1.id, dst.id, 0, { 'Exploring': dst.label, 'Tentative cost': '10+15=25' }),
+    ], 'step2', undefined, {
       [src.id]: [
         route('0.0.0.0', 0, 'local', 'lo', 0),
         route(mid1.ip ?? '10.0.2.0', 24, mid1.ip ?? '10.0.2.1', 'eth0', 10),
@@ -277,28 +307,42 @@ export function* dijkstraDemoSimulator(topology: Topology): NetworkStepGenerator
       ja: `ステップ2: ${mid1.label}（コスト10）を確定。${dst.label} へのコストを 10+15=25 に更新（20 < 25 なので ${mid2.label} 経由は変更なし）。未訪問: {${mid2.label}, ${dst.label}}。`,
       en: `Step 2: Settle ${mid1.label} (cost=10). Update ${dst.label} cost to 10+15=25. (Still 20 via ${mid2.label} unchanged). Unvisited: {${mid2.label}, ${dst.label}}.`,
     },
+    highlightPacketId: 'dijk-2',
   }
 
   yield {
-    state: empty(topology, [], 'step3'),
+    state: empty(topology, [
+      pkt('dijk-3', 'ospf_lsa', mid2.id, dst.id, 0, { 'Cheaper path found!': `${mid2.label}→${dst.label}`, 'Cost': '20+3=23 < 25' }),
+    ], 'step3'),
     log: {
       ja: `ステップ3: ${mid2.label}（コスト20）を確定。${dst.label} への経路を再チェック: ${mid2.label} 経由=20+3=23 < 現在25 → コストを23に更新して経路変更。`,
       en: `Step 3: Settle ${mid2.label} (cost=20). Recheck ${dst.label}: via ${mid2.label}=20+3=23 < current 25 → update cost to 23 and change path.`,
     },
+    highlightPacketId: 'dijk-3',
   }
 
   yield {
-    state: empty(topology, [], 'done'),
+    state: empty(topology, [
+      pkt('dijk-f1', 'icmp_request', src.id, mid2.id, 0, { 'Final path': `${src.label}→${mid2.label}→${dst.label}`, 'Cost': '23' }),
+      pkt('dijk-f2', 'icmp_request', mid2.id, dst.id, 0.5, { 'Final path': `${src.label}→${mid2.label}→${dst.label}`, 'Cost': '23' }),
+    ], 'done'),
     log: {
       ja: `最終: ${dst.label} の最短コスト=23（${src.label} → ${mid2.label} → ${dst.label}）。OSPFはルーター台数が増えるほどSPF計算量がO(E log V)で増加。多エリア設計でSPFスコープを限定する理由がここにある。`,
       en: `Final: Shortest cost to ${dst.label}=23 via (${src.label}→${mid2.label}→${dst.label}). OSPF SPF complexity O(E log V). Multi-area design limits SPF scope.`,
     },
+    highlightPacketId: 'dijk-f1',
   }
 }
 
 // ---- 設計演習：小規模オフィスネットワーク ----
 
 export function* designSmallOfficeSimulator(topology: Topology): NetworkStepGenerator {
+  const isp = topology.nodes.find(n => n.type === 'internet') ?? topology.nodes[0]!
+  const gw  = topology.nodes.find(n => n.type === 'router') ?? topology.nodes[1]!
+  const sw1 = topology.nodes.find(n => n.type === 'switch') ?? topology.nodes[2]!
+  const pc1 = topology.nodes.find(n => n.id === 'pc1') ?? topology.nodes.find(n => n.type === 'host')!
+  const nas = topology.nodes.find(n => n.id === 'nas') ?? topology.nodes.filter(n => n.type === 'host')[1] ?? pc1
+
   yield {
     state: empty(topology, [], 'requirements'),
     log: {
@@ -308,41 +352,67 @@ export function* designSmallOfficeSimulator(topology: Topology): NetworkStepGene
   }
 
   yield {
-    state: empty(topology, [], 'topology_design'),
+    state: empty(topology, [
+      pkt('ds-flow', 'http_request', pc1.id, sw1.id, 0, {
+        'Flow': 'PC → SW → Router(NAPT) → ISP', 'VLAN10': 'Business', 'VLAN20': 'Guest',
+      }),
+    ], 'topology_design'),
     log: {
       ja: '設計案: ISP→ブロードバンドルーター（NAPT）→L2スイッチ（24ポート）→PC/プリンター。Wi-Fi APはスイッチに接続。VLAN10=業務、VLAN20=ゲスト。ルーターのACLでVLAN間分離。',
       en: 'Design: ISP → Broadband router (NAPT) → L2 switch (24-port) → PCs/printers. Wi-Fi APs on switch. VLAN10=business, VLAN20=guest. Router ACL separates VLANs.',
     },
+    highlightPacketId: 'ds-flow',
   }
 
   yield {
-    state: empty(topology, [], 'addressing'),
+    state: empty(topology, [
+      pkt('ds-dhcp', 'dhcp_discover', pc1.id, sw1.id, 0, {
+        'DHCP': 'Discover (broadcast)', 'Business range': '192.168.1.100–200', 'Servers (static)': '192.168.1.10–19',
+      }),
+    ], 'addressing'),
     log: {
       ja: 'アドレス設計: 業務LAN=192.168.1.0/24（VLAN10）。ゲストLAN=192.168.2.0/24（VLAN20）。サーバー固定割り当て（192.168.1.10〜.19）。PCはDHCP（.100〜.200）。',
       en: 'Addressing: Business=192.168.1.0/24 (VLAN10), Guest=192.168.2.0/24 (VLAN20). Servers: static .10–.19. PCs: DHCP .100–.200.',
     },
+    highlightPacketId: 'ds-dhcp',
   }
 
   yield {
-    state: empty(topology, [], 'redundancy'),
+    state: empty(topology, [
+      pkt('ds-nas', 'generic', pc1.id, nas.id, 0, {
+        'Access': 'NAS file server', 'Priority': '①RAID ②UPS ③Spare switch',
+      }),
+    ], 'redundancy'),
     log: {
       ja: '可用性考慮: 小規模では冗長化コストが高い。優先順位: ① NASのRAID（データ保護）。② UPS（停電対策）。③ 予備スイッチの保管。④ ブロードバンドルーターの同一機種予備。',
       en: 'Availability: Redundancy is costly for small scale. Priority: ① NAS RAID. ② UPS. ③ Spare switch. ④ Same-model backup router.',
     },
+    highlightPacketId: 'ds-nas',
   }
 
   yield {
-    state: empty(topology, [], 'security'),
+    state: empty(topology, [
+      pkt('ds-sec', 'generic', isp.id, gw.id, 0, {
+        'FW rule': 'Outbound PERMIT / Inbound DENY', 'Guest VLAN': 'Internet only – NAS blocked',
+      }),
+    ], 'security'),
     log: {
       ja: 'セキュリティ: ① ゲストVLANはインターネットのみ許可（業務LAN遮断）。② Wi-FiはWPA3（WPA2でも可）。③ ルーターのFWでOutbound許可・Inbound拒否。④ NASへのアクセスはVLAN10のみ。',
       en: 'Security: ① Guest VLAN: internet only (block business LAN). ② Wi-Fi WPA3. ③ Router FW: permit outbound, deny inbound. ④ NAS access restricted to VLAN10.',
     },
+    highlightPacketId: 'ds-sec',
   }
 }
 
 // ---- 設計演習：DMZを持つエンタープライズ ----
 
 export function* designEnterpriseDmzSimulator(topology: Topology): NetworkStepGenerator {
+  const isp      = topology.nodes.find(n => n.type === 'internet') ?? topology.nodes[0]!
+  const fw       = topology.nodes.find(n => n.type === 'firewall') ?? topology.nodes[1]!
+  const coreSw   = topology.nodes.find(n => n.type === 'switch') ?? topology.nodes[2]!
+  const web      = topology.nodes.find(n => n.id === 'web') ?? topology.nodes.find(n => n.type === 'host')!
+  const internal = topology.nodes.find(n => n.id === 'internal') ?? topology.nodes.filter(n => n.type === 'host')[1] ?? web
+
   yield {
     state: empty(topology, [], 'requirements'),
     log: {
@@ -352,34 +422,54 @@ export function* designEnterpriseDmzSimulator(topology: Topology): NetworkStepGe
   }
 
   yield {
-    state: empty(topology, [], 'dmz_concept'),
+    state: empty(topology, [
+      pkt('ent-dmz', 'http_request', isp.id, fw.id, 0, {
+        'Zone': 'Internet → Firewall → DMZ', 'FW1 permits': 'HTTP/443 to Web/Mail only',
+      }),
+    ], 'dmz_concept'),
     log: {
       ja: 'DMZ（非武装地帯）設計: インターネット↔FW1↔DMZ（Web/Mailサーバー）↔FW2↔内部LAN。FW1は公開サービスポートのみ許可。FW2は内部→DMZのみ許可（DMZ→内部は拒否）。',
       en: 'DMZ design: Internet ↔ FW1 ↔ DMZ (Web/Mail) ↔ FW2 ↔ Internal LAN. FW1: permit only public service ports. FW2: permit internal→DMZ only (deny DMZ→internal).',
     },
+    highlightPacketId: 'ent-dmz',
   }
 
   yield {
-    state: empty(topology, [], 'campus_design'),
+    state: empty(topology, [
+      pkt('ent-campus', 'generic', internal.id, coreSw.id, 0, {
+        'Layer': 'Core L3 SW (HSRP)', 'VLANs': 'Mgmt(10)/Tech(20)/Sales(30)/Server(40)/VoIP(50)',
+      }),
+    ], 'campus_design'),
     log: {
       ja: 'キャンパス設計（3階層）: コア（L3スイッチ×2 HSRP）→ディストリビューション（フロア毎L3スイッチ）→アクセス（各フロアL2スイッチ）。VLAN構成: 経営部(10)・技術部(20)・営業(30)・サーバー(40)・VoIP(50)。',
       en: 'Campus (3-tier): Core (2× L3 switch + HSRP) → Distribution (per-floor L3) → Access (floor L2). VLANs: Mgmt(10), Tech(20), Sales(30), Server(40), VoIP(50).',
     },
+    highlightPacketId: 'ent-campus',
   }
 
   yield {
-    state: empty(topology, [], 'redundancy'),
+    state: empty(topology, [
+      pkt('ent-ha', 'generic', isp.id, fw.id, 0, {
+        'HA': 'Firewall Active/Standby cluster', 'ISP': 'Dual ISP (BGP failover)',
+      }),
+    ], 'redundancy'),
     log: {
       ja: '冗長化: ① コアスイッチ2台（HSRP/VRRP）。② ISP2重化（BGP or スタティック）。③ ファイアウォール Active/Standby（HA クラスタ）。④ サーバー NIC チーミング（LACP）。⑤ 全アップリンクにLACP。',
       en: 'Redundancy: ① 2 core switches (HSRP/VRRP). ② Dual ISP (BGP or static). ③ Firewall HA cluster. ④ Server NIC teaming (LACP). ⑤ LACP on all uplinks.',
     },
+    highlightPacketId: 'ent-ha',
   }
 
   yield {
-    state: empty(topology, [], 'vpn'),
+    state: empty(topology, [
+      pkt('ent-vpn', 'tls_data', isp.id, fw.id, 0, {
+        'SSL-VPN': 'Clientless (browser) for guests', 'IPsec/IKEv2': 'Dedicated client for employees',
+      }),
+    ], 'vpn'),
     log: {
       ja: 'リモートアクセスVPN: ① SSL-VPN（Webブラウザ経由・クライアントレス）をゲスト・パートナー向けに提供。② IPsec/IKEv2 VPN（専用クライアント）を社員向けに提供。スプリットトンネリングで帯域節約。',
       en: 'Remote access VPN: ① SSL-VPN (clientless, browser) for guests/partners. ② IPsec/IKEv2 VPN (dedicated client) for employees. Split tunneling for bandwidth efficiency.',
     },
+    highlightPacketId: 'ent-vpn',
   }
 }

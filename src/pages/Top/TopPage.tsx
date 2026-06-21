@@ -209,10 +209,15 @@ function CourseCard({
       </div>
 
       <div className="border-t border-dark-border pt-4 dark:border-dark-border light:border-light-border">
-        <div className="mb-1.5 text-xs font-medium text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
+        <div className="mb-1.5 flex items-center gap-2 text-xs font-medium text-dark-textDim dark:text-dark-textDim light:text-light-textDim">
           {includedLabel}
+          {scenarios.length > 3 && (
+            <span className={`rounded-md px-1.5 py-0.5 text-xs font-medium ${badgeBg}`}>
+              +{scenarios.length - 3}
+            </span>
+          )}
         </div>
-        {scenarios.map((s, i) => (
+        {scenarios.slice(0, 3).map((s, i) => (
           <div key={s} className="flex items-center gap-2 py-0.5 text-xs text-dark-text dark:text-dark-text light:text-light-text">
             <span className="text-dark-textDim">{i + 1}.</span>
             {s}
