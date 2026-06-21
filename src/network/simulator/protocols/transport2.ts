@@ -99,6 +99,9 @@ export function* tcpSlidingWindowSimulator(topology: Topology): NetworkStepGener
 // ---- TCP輻輳制御 ----
 
 export function* tcpCongestionSimulator(topology: Topology): NetworkStepGenerator {
+  const client = topology.nodes.find(n => n.id === 'client') ?? topology.nodes[0]!
+  const server = topology.nodes.find(n => n.id === 'server') ?? topology.nodes[1]!
+
   const slowStart: TcpWindowState = {
     windowSize: 1, sentUnacked: 0, nextSeq: 1,
     cwnd: 1, ssthresh: 16,
@@ -106,16 +109,24 @@ export function* tcpCongestionSimulator(topology: Topology): NetworkStepGenerato
     segments: [{ seq: 1, status: 'sent' }],
   }
   yield {
-    state: empty(topology, [], 'slow_start', slowStart),
+    state: empty(topology, [
+      pkt('cong-ss1', 'tcp_data', client.id, server.id, 0, 1, undefined, { 'cwnd': '1 MSS', 'Phase': 'Slow Start' }),
+    ], 'slow_start', slowStart),
     log: {
       ja: 'スロースタート（Slow Start）: 接続直後は cwnd（輻輳ウィンドウ）=1 MSS。ACK 1 つ受け取るごとに cwnd を 1 増加 → 指数関数的増加（1→2→4→8…）。',
       en: 'Slow Start: Initially cwnd=1 MSS. Each ACK increases cwnd by 1 → exponential growth (1→2→4→8…).',
     },
+    highlightPacketId: 'cong-ss1',
   }
 
   const growing: TcpWindowState = { ...slowStart, cwnd: 8, windowSize: 8, ssthresh: 16, nextSeq: 9, segments: Array.from({ length: 8 }, (_, i) => ({ seq: i + 1, status: 'sent' as const })) }
   yield {
-    state: empty(topology, [], 'growing', growing),
+    state: empty(topology, [
+      pkt('cong-g1', 'tcp_data', client.id, server.id, 0.15, 1, undefined, { 'cwnd': '8 MSS', 'Phase': 'Slow Start growing' }),
+      pkt('cong-g2', 'tcp_data', client.id, server.id, 0.35, 2, undefined),
+      pkt('cong-g3', 'tcp_data', client.id, server.id, 0.55, 3, undefined),
+      pkt('cong-g4', 'tcp_data', client.id, server.id, 0.75, 4, undefined),
+    ], 'growing', growing),
     log: {
       ja: 'cwnd が ssthresh（スロースタート閾値=16）に達するまで指数増加。ssthresh 到達後は輻輳回避フェーズへ移行（線形増加）。',
       en: 'cwnd grows exponentially until ssthresh (slow-start threshold=16). After reaching ssthresh, switches to Congestion Avoidance (linear growth).',
@@ -124,7 +135,13 @@ export function* tcpCongestionSimulator(topology: Topology): NetworkStepGenerato
 
   const caPhase: TcpWindowState = { ...growing, cwnd: 18, windowSize: 18, congestionPhase: 'congestion_avoidance', segments: Array.from({ length: 18 }, (_, i) => ({ seq: i + 1, status: 'sent' as const })) }
   yield {
-    state: empty(topology, [], 'cong_avoid', caPhase),
+    state: empty(topology, [
+      pkt('cong-ca1', 'tcp_data', client.id, server.id, 0.1, 1, undefined, { 'cwnd': '18 MSS', 'Phase': 'Congestion Avoidance' }),
+      pkt('cong-ca2', 'tcp_data', client.id, server.id, 0.3, 2, undefined),
+      pkt('cong-ca3', 'tcp_data', client.id, server.id, 0.5, 3, undefined),
+      pkt('cong-ca4', 'tcp_data', client.id, server.id, 0.7, 4, undefined),
+      pkt('cong-ca5', 'tcp_data', client.id, server.id, 0.9, 5, undefined),
+    ], 'cong_avoid', caPhase),
     log: {
       ja: '輻輳回避（Congestion Avoidance）: cwnd を RTT ごとに 1 MSS 増加（線形増加）。パケットロスを検出するまで増加を続ける。',
       en: 'Congestion Avoidance: cwnd grows by 1 MSS per RTT (linear). Continues until packet loss detected.',
@@ -133,20 +150,26 @@ export function* tcpCongestionSimulator(topology: Topology): NetworkStepGenerato
 
   const lostSeg: TcpWindowState = { ...caPhase, cwnd: 18, segments: caPhase.segments.map((s, i) => i === 10 ? { ...s, status: 'lost' as const } : s) }
   yield {
-    state: empty(topology, [], 'loss', lostSeg),
+    state: empty(topology, [
+      pkt('cong-l1', 'tcp_data', client.id, server.id, 0.4, 11, undefined, { 'Event': 'Packet loss detected (RTO)', 'Action': 'ssthresh=9, cwnd→1' }),
+    ], 'loss', lostSeg),
     log: {
       ja: '輻輳検出（タイムアウト）: 再送タイマー（RTO）が切れたら輻輳とみなす。ssthresh = cwnd/2 = 9 に更新。cwnd = 1 MSS にリセットしてスロースタートをやり直す。',
       en: 'Congestion (timeout): If RTO expires, assume congestion. Set ssthresh = cwnd/2 = 9. Reset cwnd=1 and restart slow start.',
     },
+    highlightPacketId: 'cong-l1',
   }
 
   const recovery: TcpWindowState = { ...slowStart, ssthresh: 9, cwnd: 1, segments: [{ seq: 11, status: 'retrans' as const }] }
   yield {
-    state: empty(topology, [], 'recovery', recovery),
+    state: empty(topology, [
+      pkt('cong-rt', 'tcp_data', client.id, server.id, 0, 11, undefined, { 'Retransmit': 'SEQ=11', 'Trigger': '3× dup ACK → Fast Retransmit' }),
+    ], 'recovery', recovery),
     log: {
       ja: '高速再送（Fast Retransmit）: 重複ACK 3 回で即座に再送（タイムアウト待たない）。高速回復（Fast Recovery）: ssthresh=cwnd/2 のまま cwnd=ssthresh+3 で輻輳回避フェーズ継続。',
       en: 'Fast Retransmit: 3 duplicate ACKs → immediate retransmit (no RTO wait). Fast Recovery: keep ssthresh=cwnd/2, set cwnd=ssthresh+3, continue Congestion Avoidance.',
     },
+    highlightPacketId: 'cong-rt',
   }
 
   yield {

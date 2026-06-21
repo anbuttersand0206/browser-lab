@@ -22,7 +22,7 @@ function empty(
 
 function pkt(
   id: string,
-  type: 'generic' | 'hsrp_hello' | 'igmp_report' | 'igmp_query' | 'pim_hello',
+  type: 'generic' | 'hsrp_hello' | 'igmp_report' | 'igmp_query' | 'pim_hello' | 'http_request' | 'dhcp_discover',
   from: string,
   to: string,
   progress: number,
@@ -35,6 +35,12 @@ function pkt(
 // ---- キャンパス3階層アーキテクチャ ----
 
 export function* campus3TierSimulator(topology: Topology): NetworkStepGenerator {
+  const core  = topology.nodes.find(n => n.id === 'core') ?? topology.nodes.find(n => n.type === 'router')!
+  const dist1 = topology.nodes.find(n => n.id === 'dist1') ?? topology.nodes.find(n => n.type === 'switch')!
+  const dist2 = topology.nodes.find(n => n.id === 'dist2') ?? topology.nodes.filter(n => n.type === 'switch')[1] ?? dist1
+  const host1 = topology.nodes.find(n => n.id === 'host1') ?? topology.nodes.find(n => n.type === 'host')!
+  const host3 = topology.nodes.find(n => n.id === 'host3') ?? topology.nodes.filter(n => n.type === 'host')[2] ?? host1
+
   yield {
     state: empty(topology, [], 'overview'),
     log: {
@@ -44,39 +50,62 @@ export function* campus3TierSimulator(topology: Topology): NetworkStepGenerator 
   }
 
   yield {
-    state: empty(topology, [], 'access_layer'),
+    state: empty(topology, [
+      pkt('camp-a', 'dhcp_discover', host1.id, dist1.id, 0, {
+        'Layer': 'Access', 'Device': 'L2 Switch', 'Features': 'VLAN / 802.1X / PoE / PortFast',
+      }),
+    ], 'access_layer'),
     log: {
       ja: 'アクセス層: PCやIPフォン・プリンターなどのエンドデバイスが接続するL2スイッチの層。ポート単位のVLAN割り当て・802.1X認証・PoE（IP電話向け）・スパニングツリー（PortFast）を担当。',
       en: 'Access Layer: L2 switches connecting end devices (PCs, IP phones, printers). Per-port VLAN, 802.1X auth, PoE, STP PortFast.',
     },
+    highlightPacketId: 'camp-a',
   }
 
   yield {
-    state: empty(topology, [], 'distribution_layer'),
+    state: empty(topology, [
+      pkt('camp-d', 'generic', dist1.id, core.id, 0, {
+        'Layer': 'Distribution', 'Device': 'L3 Switch', 'Features': 'Inter-VLAN routing / ACL / HSRP',
+      }),
+    ], 'distribution_layer'),
     log: {
       ja: 'ディストリビューション層: VLAN間ルーティング・アクセス制御（ACL）・STPルートブリッジ・デフォルトゲートウェイ冗長（HSRP/VRRP）・ルートフィルタリングを担当するL3スイッチの層。',
       en: 'Distribution Layer: L3 switches handling inter-VLAN routing, ACL, STP root, HSRP/VRRP gateway redundancy, route filtering.',
     },
+    highlightPacketId: 'camp-d',
   }
 
   yield {
-    state: empty(topology, [], 'core_layer'),
+    state: empty(topology, [
+      pkt('camp-c', 'http_request', core.id, dist2.id, 0, {
+        'Layer': 'Core', 'Speed': '10GbE', 'Features': 'High-speed forwarding only (no ACL/NAT)',
+      }),
+    ], 'core_layer'),
     log: {
       ja: 'コア層: 高速バックボーンスイッチ。データセンター・WAN・インターネット出口を接続。シンプルさが重要（ACLやNATは設定しない）。高速かつ高可用性。10GbE/40GbE/100GbEが一般的。',
       en: 'Core Layer: High-speed backbone. Connects DC, WAN, internet. Simplicity is key (no ACL or NAT). High speed and availability. 10/40/100GbE typical.',
     },
+    highlightPacketId: 'camp-c',
   }
 
   yield {
-    state: empty(topology, [], 'collapsed_core'),
+    state: empty(topology, [
+      pkt('camp-cc', 'generic', host1.id, core.id, 0, {
+        'Design': 'Collapsed Core (2-tier)', 'Core + Dist': 'Combined into one device',
+      }),
+    ], 'collapsed_core'),
     log: {
       ja: '2階層設計（Collapsed Core）: 中規模ネットワークではコアとディストリビューションを統合。コスト削減できるが、スケールアップが困難。',
       en: 'Collapsed Core (2-tier): Merge core and distribution for medium networks. Cost-effective but harder to scale up.',
     },
+    highlightPacketId: 'camp-cc',
   }
 
   yield {
-    state: empty(topology, [], 'bandwidth_rules'),
+    state: empty(topology, [
+      pkt('camp-b1', 'generic', host3.id, dist2.id, 0.2, { 'Link': 'Access → Dist', 'Oversubscription': '20:1' }),
+      pkt('camp-b2', 'generic', dist2.id, core.id, 0.6, { 'Link': 'Dist → Core', 'Oversubscription': '4:1' }),
+    ], 'bandwidth_rules'),
     log: {
       ja: '帯域設計のルール: アクセス→ディストリビューション: 20:1 オーバーサブスクリプション。ディストリビューション→コア: 4:1 。コア間: 1:1（オーバーサブスクリプションなし）。',
       en: 'Bandwidth design rules: Access→Distribution: 20:1 oversubscription. Distribution→Core: 4:1. Core-to-core: 1:1 (no oversubscription).',

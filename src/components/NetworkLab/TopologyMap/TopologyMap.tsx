@@ -5,6 +5,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import type { NetworkState, NetworkNode, PacketOnLink } from '../../../network/simulator/types'
 import { useI18n } from '../../../i18n'
+import { VlanLinkOverlay } from './VlanOverlay'
 
 const PACKET_ANIM_MS = 350  // パケットがリンク上を移動するアニメーション時間
 
@@ -117,9 +118,24 @@ export function TopologyMap({ state, onSelectPacket, selectedPacketId }: Props) 
   // useEffect内でstaleな値を参照しないようrefでも持つ
   const animPosRef = useRef<Record<string, { cx: number; cy: number }>>({})
   const rafRef = useRef<number>(0)
+  // 着弾フラッシュ: nodeId → フラッシュ中フラグ（タイマーで削除）
+  const [flashNodes, setFlashNodes] = useState<Record<string, number>>({})
+  const prevPacketsRef = useRef<PacketOnLink[]>([])
 
   // animPos stateをrefに同期する
   useEffect(() => { animPosRef.current = animPos }, [animPos])
+
+  // パケットがパケット一覧から消えた（宛先到着）タイミングでノードをフラッシュさせる
+  useEffect(() => {
+    const curIds = new Set((state?.packets ?? []).map(p => p.id))
+    const arrived = prevPacketsRef.current.filter(p => !curIds.has(p.id))
+    prevPacketsRef.current = state?.packets ?? []
+    if (!arrived.length) return
+    const nodeIds = arrived.map(p => p.toNodeId)
+    setFlashNodes(f => { const n = {...f}; nodeIds.forEach(id => { n[id] = 1 }); return n })
+    const t = setTimeout(() => setFlashNodes(f => { const n = {...f}; nodeIds.forEach(id => delete n[id]); return n }), 250)
+    return () => clearTimeout(t)
+  }, [state?.packets])
 
   // ResizeObserverでSVGサイズを追跡する
   useEffect(() => {
@@ -274,6 +290,20 @@ export function TopologyMap({ state, onSelectPacket, selectedPacketId }: Props) 
     }
   }
 
+  // アクティブリンク（パケット通過中）をハイライトするためのID集合
+  const activeLinkIds = new Set(packets.flatMap(p => {
+    const lnk = links.find(l => (l.from===p.fromNodeId&&l.to===p.toNodeId)||(l.to===p.fromNodeId&&l.from===p.toNodeId))
+    return lnk ? [lnk.id] : []
+  }))
+  // スピードライン用の進行方向角度（°）。atan2は原点→方向ベクトルの角度を返す
+  const packetAngles = new Map(packets.map(p => {
+    const fn = nodes.find(n => n.id === p.fromNodeId)
+    const tn = nodes.find(n => n.id === p.toNodeId)
+    if (!fn || !tn) return [p.id, 0] as [string, number]
+    const fp = getNodePos(fn), tp = getNodePos(tn)
+    return [p.id, Math.atan2(tp.y - fp.y, tp.x - fp.x) * 57.296] as [string, number]
+  }))
+
   return (
     <svg
       ref={svgRef}
@@ -290,12 +320,18 @@ export function TopologyMap({ state, onSelectPacket, selectedPacketId }: Props) 
           <line
             key={lnk.id}
             x1={x1} y1={y1} x2={x2} y2={y2}
-            stroke={lnk.status === 'up' ? '#4b5563' : '#ef4444'}
-            strokeWidth={2}
+            stroke={lnk.status === 'up' ? (activeLinkIds.has(lnk.id) ? '#94a3b8' : '#4b5563') : '#ef4444'}
+            strokeWidth={activeLinkIds.has(lnk.id) ? 3 : 2}
             strokeDasharray={lnk.status === 'down' ? '6 3' : undefined}
+            style={{ transition: 'stroke 300ms ease, stroke-width 300ms ease' }}
           />
         )
       })}
+
+      {/* VLANトランクリンクに虹色ダッシュを重ねる */}
+      {state.vlanState && (
+        <VlanLinkOverlay vlanState={state.vlanState} links={links} nodes={nodes} getNodePos={getNodePos} />
+      )}
 
       {/* パケット（リンク上を移動する円）*/}
       {packets.map(p => {
@@ -311,15 +347,21 @@ export function TopologyMap({ state, onSelectPacket, selectedPacketId }: Props) 
             onClick={() => onSelectPacket?.(isSelected ? null : p.packet.id)}
             className="cursor-pointer"
           >
+            {/* 進行方向への速度感楕円（スピードライン）*/}
+            <ellipse cx={0} cy={0} rx={9} ry={4} fill={color} fillOpacity={0.35}
+              transform={`rotate(${packetAngles.get(p.id) ?? 0})`} />
             <circle
               cx={0} cy={0} r={isSelected ? 9 : 7}
               fill={color}
               stroke={isSelected ? '#fff' : 'transparent'}
               strokeWidth={2}
             />
-            {/* ブロードキャストはリングを追加して区別する */}
+            {/* ブロードキャストはパルスリングで区別する（rAFより宣言的なSVG animateを使用）*/}
             {p.broadcast && (
-              <circle cx={0} cy={0} r={12} fill="none" stroke={color} strokeWidth={1} opacity={0.4} />
+              <circle cx={0} cy={0} r={12} fill="none" stroke={color} strokeWidth={1}>
+                <animate attributeName="r" values="12;22;12" dur="1s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.4;0;0.4" dur="1s" repeatCount="indefinite" />
+              </circle>
             )}
           </g>
         )
@@ -340,24 +382,24 @@ export function TopologyMap({ state, onSelectPacket, selectedPacketId }: Props) 
           >
             {/* 外枠の円 */}
             <circle cx={0} cy={0} r={28} fill={color} fillOpacity={0.15} stroke={color} strokeWidth={1.5} />
+            {/* VLANメンバーノードに所属VLANカラーのリングを重ねる */}
+            {state.vlanState?.vlans.filter(v => v.memberNodeIds.includes(node.id)).map(v => (
+              <circle key={v.id} cx={0} cy={0} r={31} fill="none" stroke={v.color} strokeWidth={2} opacity={0.7} />
+            ))}
+            {/* 着弾フラッシュオーバーレイ（fillOpacity遷移でフェードする）*/}
+            <circle cx={0} cy={0} r={28} fill={color}
+              fillOpacity={flashNodes[node.id] !== undefined ? 0.35 : 0}
+              style={{ transition: 'fill-opacity 200ms ease-out' }}
+            />
             {/* アイコンテキスト（絵文字は環境依存なのでシンプルな代替も用意） */}
             <text x={0} y={6} textAnchor="middle" fontSize={20} fill={color} style={{ userSelect: 'none' }}>
               {icon}
             </text>
             {/* ノード種別ラベル */}
             {labelLines.map((line, i) => (
-              <text
-                key={i}
-                x={0}
-                y={38 + i * 14}
-                textAnchor="middle"
-                fontSize={11}
-                fill="currentColor"
-                className="text-dark-text dark:text-dark-text light:text-light-text"
-                style={{ userSelect: 'none' }}
-              >
-                {line}
-              </text>
+              <text key={i} x={0} y={38 + i * 14} textAnchor="middle" fontSize={11}
+                fill="currentColor" className="text-dark-text dark:text-dark-text light:text-light-text"
+                style={{ userSelect: 'none' }}>{line}</text>
             ))}
             {/* IPアドレス（あれば） */}
             {node.ip && !node.label.includes(node.ip) && (
@@ -376,8 +418,8 @@ export function TopologyMap({ state, onSelectPacket, selectedPacketId }: Props) 
         )
       })}
 
-      {/* OSI層表示（OSIモデルシナリオ時のみ） */}
-      {OSI_PHASES.has(state.phase) && (
+      {/* OSI層表示（OSIモデルシナリオ時のみ。src/dstノードの有無でトポロジーを判別） */}
+      {OSI_PHASES.has(state.phase) && state.topology.nodes.some(n => n.id === 'src') && (
         <OSILayerOverlay
           activeLayer={state.activeOsiLayer}
           capsuleLayers={state.capsuleLayers}

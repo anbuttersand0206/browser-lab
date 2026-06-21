@@ -4,6 +4,8 @@
 import type { NetworkScenario } from '../../../network/simulator/types'
 import type { NetworkState } from '../../../network/simulator/types'
 import { ProtocolInspector } from '../ProtocolInspector/ProtocolInspector'
+import { TcpWindowChart } from '../TcpWindowChart/TcpWindowChart'
+import { FirewallRuleTable } from '../FirewallRuleTable/FirewallRuleTable'
 import { useI18n } from '../../../i18n'
 
 interface Props {
@@ -107,11 +109,26 @@ export function NetworkInfoPanel({ scenario, state, selectedPacketId }: Props) {
         </div>
       )}
 
-      {/* ProtocolInspector */}
-      <div className={sectionCls}>
-        <div className={`${labelCls} mb-2`}>{locale === 'ja' ? 'パケット詳細' : 'Packet Inspector'}</div>
-        <ProtocolInspector packet={selectedPacket} />
-      </div>
+      {/* TCPウィンドウビジュアライザー（tcpWindowState が存在するシナリオのみ）*/}
+      {state?.tcpWindowState && (
+        <div className={sectionCls}>
+          <div className={`${labelCls} mb-2`}>{locale === 'ja' ? 'TCPウィンドウ' : 'TCP Window'}</div>
+          <TcpWindowChart state={state.tcpWindowState} />
+        </div>
+      )}
+
+      {/* ファイアウォールルール（firewallState があるとき ProtocolInspector の代わりに表示）*/}
+      {state?.firewallState ? (
+        <div className={sectionCls}>
+          <div className={`${labelCls} mb-2`}>{locale === 'ja' ? 'ファイアウォール照合' : 'Firewall Match'}</div>
+          <FirewallRuleTable state={state.firewallState} />
+        </div>
+      ) : (
+        <div className={sectionCls}>
+          <div className={`${labelCls} mb-2`}>{locale === 'ja' ? 'パケット詳細' : 'Packet Inspector'}</div>
+          <ProtocolInspector packet={selectedPacket} />
+        </div>
+      )}
     </div>
   )
 }

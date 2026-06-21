@@ -20,7 +20,7 @@ function empty(
 
 function pkt(
   id: string,
-  type: 'generic' | 'icmp_request' | 'rip_request' | 'rip_response' | 'bgp_open' | 'bgp_update' | 'bgp_keepalive' | 'ospf_hello' | 'ospf_lsa',
+  type: 'generic' | 'icmp_request' | 'rip_request' | 'rip_response' | 'bgp_open' | 'bgp_update' | 'bgp_keepalive' | 'ospf_hello' | 'ospf_lsa' | 'http_request' | 'tcp_syn' | 'tcp_data',
   from: string,
   to: string,
   progress: number,
@@ -37,6 +37,9 @@ function route(network: string, prefix: number, nextHop: string, iface: string, 
 // ---- TCPIPモデル（4層） ----
 
 export function* tcpIpModelSimulator(topology: Topology): NetworkStepGenerator {
+  const src = topology.nodes.find(n => n.id === 'src') ?? topology.nodes[0]!
+  const dst = topology.nodes.find(n => n.id === 'dst') ?? topology.nodes[1]!
+
   yield {
     state: empty(topology, [], 'overview'),
     log: {
@@ -45,32 +48,44 @@ export function* tcpIpModelSimulator(topology: Topology): NetworkStepGenerator {
     },
   }
   yield {
-    state: empty(topology, [], 'layer4_app'),
+    state: empty(topology, [pkt('tcpip-app', 'http_request', src.id, dst.id, 0, {
+      'TCP/IP Layer': '4 – Application', 'OSI equiv': '5–7', 'Protocols': 'HTTP/HTTPS/FTP/SMTP/DNS/DHCP',
+    })], 'layer4_app'),
     log: {
       ja: '第4層 アプリケーション層: HTTP・HTTPS・FTP・SMTP・DNS・DHCP・SSH・Telnet 等のアプリケーションプロトコル。OSIの5〜7層に相当。',
       en: 'Layer 4 – Application: HTTP, HTTPS, FTP, SMTP, DNS, DHCP, SSH, Telnet. Corresponds to OSI layers 5–7.',
     },
+    highlightPacketId: 'tcpip-app',
   }
   yield {
-    state: empty(topology, [], 'layer3_transport'),
+    state: empty(topology, [pkt('tcpip-trn', 'tcp_syn', src.id, dst.id, 0, {
+      'TCP/IP Layer': '3 – Transport', 'OSI equiv': '4', 'Protocols': 'TCP (reliable) / UDP (fast)',
+    })], 'layer3_transport'),
     log: {
       ja: '第3層 トランスポート層: TCP（信頼性・順序保証・フロー制御）と UDP（軽量・低遅延）。ポート番号でアプリケーションを識別。OSI第4層に相当。',
       en: 'Layer 3 – Transport: TCP (reliability, ordering, flow control) and UDP (lightweight, low-latency). Port numbers identify applications. Corresponds to OSI layer 4.',
     },
+    highlightPacketId: 'tcpip-trn',
   }
   yield {
-    state: empty(topology, [], 'layer2_internet'),
+    state: empty(topology, [pkt('tcpip-net', 'icmp_request', src.id, dst.id, 0, {
+      'TCP/IP Layer': '2 – Internet', 'OSI equiv': '3', 'Protocols': 'IP / ICMP / IGMP / ARP',
+    })], 'layer2_internet'),
     log: {
       ja: '第2層 インターネット層: IP（アドレッシング・ルーティング）・ICMP・IGMP・ARP。OSI第3層に相当。グローバルな経路選択を担う。',
       en: 'Layer 2 – Internet: IP (addressing, routing), ICMP, IGMP, ARP. Corresponds to OSI layer 3. Handles global routing.',
     },
+    highlightPacketId: 'tcpip-net',
   }
   yield {
-    state: empty(topology, [], 'layer1_link'),
+    state: empty(topology, [pkt('tcpip-lnk', 'generic', src.id, dst.id, 0, {
+      'TCP/IP Layer': '1 – Link', 'OSI equiv': '1–2', 'Protocols': 'Ethernet / Wi-Fi / PPP',
+    })], 'layer1_link'),
     log: {
       ja: '第1層 リンク層（ネットワークインターフェース層）: Ethernet・Wi-Fi・PPP など、物理媒体とその直接制御。OSIの1〜2層に相当。MACアドレスを使う。',
       en: 'Layer 1 – Link (Network Interface): Ethernet, Wi-Fi, PPP. Physical media and direct control. Corresponds to OSI layers 1–2. Uses MAC addresses.',
     },
+    highlightPacketId: 'tcpip-lnk',
   }
   yield {
     state: empty(topology, [], 'vs_osi'),

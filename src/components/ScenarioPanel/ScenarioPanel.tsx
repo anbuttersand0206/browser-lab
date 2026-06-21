@@ -25,7 +25,6 @@ type PanelTab = 'problem' | 'hints' | 'solution' | 'diff'
 type SolutionState = 'hidden' | 'confirming' | 'visible'
 
 export function ScenarioPanel({
-  title,
   description,
   hints,
   solution,
@@ -88,10 +87,6 @@ export function ScenarioPanel({
       </div>
 
       <div className="flex-1 overflow-auto p-4">
-        <h2 className="mb-3 text-sm font-bold text-dark-text dark:text-dark-text light:text-light-text">
-          {title}
-        </h2>
-
         {activeTab === 'problem' && (
           <div className="prose prose-sm prose-invert dark:prose-invert max-w-none">
             <MarkdownRenderer text={description} />
